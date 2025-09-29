@@ -1,0 +1,19 @@
+[project]
+name = "class-notes-distiller"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=0.68.0",
+    "colorama>=0.4.6",
+    "dotenv>=0.9.9",
+    "google>=3.0.0",
+    "google-genai>=1.39.0",
+    "gradio>=5.47.0",
+    "markdown>=3.9",
+    "numpy>=2.3.3",
+    "openai>=1.109.1",
+    "pydantic>=2.11.9",
+    "wandb>=0.22.0",
+]
