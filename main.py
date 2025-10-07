@@ -103,7 +103,7 @@ def generate_handout(lesson_num, module_num):
 
     # Second step: review the summary with a different model
     console.print(Markdown("## Reviewing first draft"))
-    review_instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/review.reviewer.md", summary_instructions=instructions, summary_draft=first_draft)
+    review_instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/review.reviewer.md", summary_instructions=instructions, summary_draft=first_draft, lesson_num=lesson_num)
     review = reviewer.chat(review_instructions)
     console.print(Markdown(review))
     save_output(Path(ROOT_DIR) / f"data/output/intermediate/review_{round(time())}.md", review)
@@ -128,7 +128,7 @@ def generate_handout(lesson_num, module_num):
 
     # Sixth step: final revision
     console.print(Markdown("## Updating Final Handout"))
-    editorial_corrections = editing_response
+    editorial_corrections = load_prompt(Path(ROOT_DIR) / "src/prompts/final_notes.teacher.md", review=review, lesson_num=lesson_num)
     final_handout = teacher.chat(editorial_corrections)
     if not os.path.exists(Path(ROOT_DIR) / f"data/output/module {module_num:03}/"):
         os.makedirs(Path(ROOT_DIR) / f"data/output/module {module_num:03}/")
@@ -148,7 +148,7 @@ def main():
     # clear_cache()
     
     module_num = 3 # a number or None
-    lesson_num = 1
+    lesson_num = 2
     generate_handout(lesson_num, module_num)
 
 if __name__ == "__main__":

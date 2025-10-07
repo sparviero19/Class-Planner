@@ -8,4 +8,4 @@ I will give you the instructions that the teacher received and the output summar
 {summary_draft}
 
 # Task:
-Please provide your suggestions
+Please provide your suggestions to improve the summary of the lesson {lesson_num}
