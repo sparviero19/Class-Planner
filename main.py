@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import  Path
 from config.definitions import ROOT_DIR, load_api_keys
+from main_bkp import input_folder
 from src.agents import OpenAIAgent, GeminiAgent
 from time import time
 from rich.markdown import Markdown
@@ -51,7 +52,11 @@ def save_output(path, text):
         f.write(text)
 
 def generate_handout(lesson_num, module_num):
-    input_folder = Path(ROOT_DIR) / f"data/input/module {module_num:03}/Lez {lesson_num:03} materials"
+    if module_num is None:
+        module_num = 0
+        input_folder = Path(ROOT_DIR) / f"data/input/Lez {lesson_num:03} materials"
+    else:
+        input_folder = Path(ROOT_DIR) / f"data/input/module {module_num:03}/Lez {lesson_num:03} materials"
     api_keys = load_api_keys()
     console = Console()
 
@@ -82,12 +87,15 @@ def generate_handout(lesson_num, module_num):
     module_structure = {}
     if os.path.exists(m_folder / "module_topics.md"):
         module_structure = extract_module_structure(m_folder / "module_topics.md")
+    else:
+        module_structure["title"] = "No tile"
     topics = extract_topics(topics_file)
     material_files = teacher.load_pdfs(material_paths, use_cache=True)
     materials = {m.name: p.name for m, p in zip(material_files, material_paths)}
-    instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/summary.teacher.md", topics=topics, subject=subject, language=language, materials=materials, lesson_num=lesson_num)
-    if module_structure:
-        instructions += f"\n\n##Here I give you the topics for all the lessons in the module: \n{module_structure}"
+    instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/summary.teacher.md", topics=topics, subject=subject,
+                               language=language, materials=materials, lesson_num=lesson_num)
+    # if module_structure:
+    #     instructions += f"\n\n##Here I give you the topics for all the lessons in the module: \n{module_structure}"
     console.print(Markdown("## Instructions"))
     console.print(Markdown(instructions))
     first_draft = teacher.chat(instructions)
@@ -122,7 +130,9 @@ def generate_handout(lesson_num, module_num):
     console.print(Markdown("## Updating Final Handout"))
     editorial_corrections = editing_response
     final_handout = teacher.chat(editorial_corrections)
-    save_output(Path(ROOT_DIR) / f"data/output/handout_{lesson_num:03}_{round(time())}.md", final_handout)
+    if not os.path.exists(Path(ROOT_DIR) / f"data/output/module {module_num:03}/"):
+        os.makedirs(Path(ROOT_DIR) / f"data/output/module {module_num:03}/")
+    save_output(Path(ROOT_DIR) / f"data/output/module {module_num:03}/handout_{lesson_num:03}_{round(time())}.md", final_handout)
 
     console.print(Markdown("## Handout Generation Completed!"))
 
@@ -137,8 +147,8 @@ def main():
     # Uncomment the next line if you want to clear cache
     # clear_cache()
     
-    module_num = 3
-    lesson_num = 15
+    module_num = 3 # a number or None
+    lesson_num = 1
     generate_handout(lesson_num, module_num)
 
 if __name__ == "__main__":
