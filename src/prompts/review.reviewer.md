@@ -1,4 +1,4 @@
-# C0ontext:
+# Context:
 I will give you the instructions that the teacher received and the output summary that the teacher provided
 
 # Instructions:

@@ -4,6 +4,8 @@ import google.genai as googleai
 from abc import ABC, abstractmethod
 from pathlib import Path
 from config.definitions import ROOT_DIR, google_api_key
+import json
+from datetime import datetime, timedelta
 
 
 class Agent(ABC):
@@ -41,6 +43,33 @@ class GeminiAgent(Agent):
         self.current_chat = None
         self.uploaded_pdfs = []
         self.uploaded_pdfs_paths = []
+        self.cache_file = Path(ROOT_DIR) / "data/cache/file_cache.json"
+        self._ensure_cache_directory()
+
+    def _ensure_cache_directory(self):
+        """Ensure the cache directory exists"""
+        cache_dir = self.cache_file.parent
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if not self.cache_file.exists():
+            self._save_cache({})
+
+    def _load_cache(self):
+        """Load the file cache from disk"""
+        try:
+            with open(self.cache_file, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def _save_cache(self, cache_data):
+        """Save the file cache to disk"""
+        with open(self.cache_file, 'w') as f:
+            json.dump(cache_data, f, indent=2)
+
+    def _get_file_hash(self, path: Path):
+        """Get a unique identifier for a file based on path and modification time"""
+        stat = path.stat()
+        return f"{path.name}_{stat.st_size}_{stat.st_mtime}"
 
     def chat(self, prompt, new_chat=False):
         if self.history:
@@ -80,7 +109,7 @@ class GeminiAgent(Agent):
         self.response = response
         return response
 
-    def load_pdfs(self, paths: str | Path | list[str] | list[Path]):
+    def load_pdfs(self, paths: str | Path | list[str] | list[Path], use_cache=True):
         if isinstance(paths, str):
             paths = [Path(paths)]
         if isinstance(paths, Path):
@@ -90,16 +119,65 @@ class GeminiAgent(Agent):
                 paths = [Path(path) for path in paths]
             elif not all(isinstance(val, Path) for val in paths):
                 raise TypeError("paths must be str, Path or list of str, or list of Path")
+        
         self.uploaded_pdfs_paths = paths
         self.uploaded_pdfs = []
+        
+        cache = self._load_cache() if use_cache else {}
+        updated_cache = {}
+        
         for path in paths:
-             self.uploaded_pdfs.append(self.agent_api.files.upload(file=path))
+            file_hash = self._get_file_hash(path)
+            
+            # Check if file is in cache and still valid
+            if use_cache and file_hash in cache:
+                cached_entry = cache[file_hash]
+                try:
+                    # Try to get the file info to verify it still exists on Google's servers
+                    file_info = self.agent_api.files.get(name=cached_entry['file_name'])
+                    print(f"Using cached file: {path.name} (expires: {cached_entry.get('expires_at', 'N/A')})")
+                    self.uploaded_pdfs.append(file_info)
+                    updated_cache[file_hash] = cached_entry
+                    continue
+                except Exception as e:
+                    print(f"Cached file {path.name} no longer valid, re-uploading...")
+            
+            # Upload new file
+            print(f"Uploading: {path.name}")
+            uploaded_file = self.agent_api.files.upload(file=path)
+            self.uploaded_pdfs.append(uploaded_file)
+            
+            # Store in cache
+            updated_cache[file_hash] = {
+                'file_name': uploaded_file.name,
+                'path': str(path),
+                'uploaded_at': datetime.now().isoformat(),
+                'expires_at': (datetime.now() + timedelta(days=2)).isoformat()  # Files typically expire after 48 hours
+            }
+        
+        # Merge with existing cache entries that weren't accessed
+        for key, value in cache.items():
+            if key not in updated_cache:
+                updated_cache[key] = value
+        
+        self._save_cache(updated_cache)
         return self.uploaded_pdfs
 
+    def clear_cache(self):
+        """Clear the file cache and delete all cached files from Google's servers"""
+        cache = self._load_cache()
+        for file_hash, cached_entry in cache.items():
+            try:
+                self.agent_api.files.delete(name=cached_entry['file_name'])
+                print(f"Deleted cached file: {cached_entry['path']}")
+            except Exception as e:
+                print(f"Could not delete {cached_entry['path']}: {e}")
+        self._save_cache({})
+
     def __del__(self):
-        if self.uploaded_pdfs is not None:
-            for f in self.uploaded_pdfs:
-                self.agent_api.files.delete(name=f.name)
+        # Don't delete files automatically - they're cached
+        # Only clear uploaded_pdfs reference
+        self.uploaded_pdfs = []
 
 
 class AnthropicAgent(Agent):
@@ -156,4 +234,3 @@ class OpenAIAgent:
             temperature=0.0,
         )
         return self.response
-
