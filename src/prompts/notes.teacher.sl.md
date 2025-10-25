@@ -1,3 +1,7 @@
+Given the following instructions:
+
+{summary_instructions}
+
 This is the final short summary you provided for the lesson {lesson_num}:
 
 {summary}

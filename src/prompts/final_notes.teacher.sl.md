@@ -1,7 +1,15 @@
 ## Context
+Given the initial summary instructions:
+
+{summary_instructions}
+
+and the handout instructions:
+
+{handout_instructions}
+
 You provieded an initial draft for the handout summary of lesson {lesson_num}: 
 
-{draft}
+{handout_draft}
 
 ### Editorial Feedback
 An editor has reviewed it and has provided some feedback:

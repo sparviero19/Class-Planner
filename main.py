@@ -70,7 +70,7 @@ def generate_handout(lesson_num, module_num, resume=True, override_files=None, i
     if not output_folder:
         output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
     stateless = ".sl"
-    if manage_history:
+    if manage_history and not resume:
         stateless = ""
     api_keys = load_api_keys()
     console = Console()
@@ -125,7 +125,8 @@ def generate_handout(lesson_num, module_num, resume=True, override_files=None, i
         nonlocal editor
         if editor is None:
             system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/system.editor.md", subject=subject, language=language)
-            editor = GeminiAgent("E", "gemini-2.5-flash", system_prompt_E, False)
+            #editor = GeminiAgent("E", "gemini-2.5-flash", system_prompt_E, False)
+            editor = OpenAIAgent("E", "gpt-4o-mini", system_prompt_E, None)
         return editor
 
     # Check what stage we're at
@@ -200,19 +201,22 @@ def generate_handout(lesson_num, module_num, resume=True, override_files=None, i
     # Fourth step: Write notes
     if not pipeline.is_stage_completed("handout_draft"):
         console.print(Markdown("## Step 4: Writing Handout"))
-        handout_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/notes.teacher{stateless}.md", lesson_num=lesson_num, summary=revised_summary, materials=materials, language=language)
+        handout_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/notes.teacher{stateless}.md", lesson_num=lesson_num, summary=revised_summary, materials=materials, language=language, summary_instructions=summary_instructions)
         console.print(Markdown(handout_instructions))
         handout = get_teacher().chat(handout_instructions)
         saved_path = pipeline.save_stage_output("handout_draft", handout)
         console.print(f"✓ Handout draft saved to: {saved_path}")
     else:
+        handout_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/notes.teacher{stateless}.md",
+                                           lesson_num=lesson_num, summary=revised_summary, materials=materials,
+                                           language=language, summary_instructions=summary_instructions)
         console.print(Markdown("## Step 4: ✓ Handout draft already exists (skipping)"))
         handout = pipeline.get_stage_output("handout_draft")
 
     # Fifth step: revise the notes for editorial modifications
     if not pipeline.is_stage_completed("editing_instructions"):
         console.print(Markdown("## Step 5: Checking Editorial Constraints"))
-        handout_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/notes.teacher{stateless}.md", lesson_num=lesson_num, summary=revised_summary, materials=materials, language=language)
+        handout_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/notes.teacher{stateless}.md", lesson_num=lesson_num, summary=revised_summary, materials=materials, language=language, summary_instructions=summary_instructions)
         editing_instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/editing.editor.md", instructions=handout_instructions, handout=handout)
         editing_response = get_editor().chat(editing_instructions)
         saved_path = pipeline.save_stage_output("editing_instructions", editing_response)
@@ -224,7 +228,8 @@ def generate_handout(lesson_num, module_num, resume=True, override_files=None, i
     # Sixth step: final revision
     if not pipeline.is_stage_completed("final_handout"):
         console.print(Markdown("## Step 6: Updating Final Handout"))
-        editorial_corrections = load_prompt(Path(ROOT_DIR) / f"src/prompts/final_notes.teacher{stateless}.md", lesson_num=lesson_num, draft=first_draft, review=editing_response)
+        editorial_corrections = load_prompt(Path(ROOT_DIR) / f"src/prompts/final_notes.teacher{stateless}.md", lesson_num=lesson_num, handout_draft=handout, review=editing_response,
+                                            summary_instructions=summary_instructions, handout_instructions=handout_instructions)
         console.print(Markdown(editorial_corrections))
         final_handout = get_teacher().chat(editorial_corrections)
         # Save final handout with timestamp in main output folder
@@ -277,8 +282,8 @@ def show_pipeline_status(lesson_num, module_num, pipeline_status_folder):
         console.print("\n**All stages completed!**")
 
 def main():
-    module_num = 3
-    lesson_num = 7
+    module_num = 7
+    lesson_num = 11
 
     input_folder = Path(ROOT_DIR) / f"data/input/module {module_num:03}/Lez {lesson_num:03} materials"
     output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
@@ -298,7 +303,7 @@ def main():
     ]
     """
     stages = {str(i):s for i,s in enumerate(PipelineManager.STAGES)}
-    reset_stage = 0
+    reset_stage = None
     if reset_stage is not None:
         reset_pipeline(lesson_num, module_num, from_stage=stages[str(reset_stage)], output_dir=output_folder)
     
