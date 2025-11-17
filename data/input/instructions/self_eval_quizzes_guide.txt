@@ -1,0 +1,43 @@
+_Il test di autovalutazione prevede cinque domande a risposta multipla, ognuna delle quali ha quattro opzioni
+dirisposta
+di cui solo una corretta e 3 distrattori. In caso di risposta errata bisogna individuare il paragrafo di riferimento per
+invitare lo studente a rivedere quel singolo segmento della videolezione.
+
+Le domande del test non devono essere formulate in forma interrogativa e/o negativa, ma in forma affermativa.Le risposte
+non devono prevedere item quali “nessuna delle precedenti” e/o “tutte le precedenti” e, in generale, nessun item che
+possa compromettere la bontà del test. Nello specifico i test vengono forniti, in altre sezioni della piattaforma,in
+modalità random e, di conseguenza, risposte come quelle sopra citate andrebbero ad alterare il significato e la valenza
+del test stesso. Uno studente potrebbe trovare, ad esempio, la risposta “nessuna delle precedenti” come prima
+alternativa di risposta del test.
+
+La risposta esatta deve variare, non è possibile inviare test nei quali la risposta esatta sia sempre la stessa (ad
+esempio: sempre la prima, sempre la seconda ecc.)Nel test bisogna indicare, per ogni domanda, la risposta esatta, il
+titolo della video lezione di riferimento, il titolo del paragrafo nel quale si può individuare la risposta (argomento,
+scelto tra gli stessi argomenti individuati nelle slide) e la difficoltà, in una scala di valutazione da 1 a 5.
+
+Le domande del test devono essere comprensibili anche se lontane dalla video lezione di riferimento. Le stesse domande,
+infatti, confluiscono in un test di autovalutazione sull’intero insegnamento. Ad esempio, se stiamo parlando di Giacomo
+Leopardi, una domanda tipo “Come recita il poeta...” sarà comprensibile subito dopo la lezione, ma non comprensibile se
+inclusa nel test totale sull’intero insegnamento. È importante rendere le domande sempre chiare. Nel caso specifico
+bisogna scrivere “Come recita Giacomo Leopardi...”_.
+
+Il test deve essere inserito all’interno del file csv con questo formato:
+
+﻿NUMERO DOMANDA,TESTO DOMANDA,TESTO RISPOSTA 1,TESTO RISPOSTA 2,TESTO RISPOSTA 3,TESTO RISPOSTA 4,NUMERO RELATIVO ALLA
+RISPOSTAESATTA,TITOLO VIDEOLEZIONE,TITOLO PARAGRAFO,DIFFICOLTA' (da 1 a 5)
+1,Domanda - finisce sempre con : e inizia con lettera maiuscola,Risposta - Inizia sempre con lettera minuscola e non
+prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),Risposta - Inizia sempre con lettera minuscola e non
+prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),Risposta - Inizia sempre con lettera minuscola e non
+prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),Risposta - Inizia sempre con lettera minuscola e non
+prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),"Contiene il numero della risposta esatta (1, 2, 3 o 4)"
+,Titolo della videolezione (per esteso),Titolo del paragrafo (per esteso),Decisa dal docente in una scala da 1 a 5
+2,,,,,,,,,
+3,,,,,,,,,
+4,,,,,,,,,
+5,,,,,,,,,
+,,,,,,,,,
+
+ Il livello di difficoltà dovrebbe essere calibrato in modo che i livelli seguano queste indicazioni:
+ * 1-2 siano domande entry level, come definizioni e concetti fondamentali.
+ * 3 sia una domanda che richieda dell'esperienza, o che richieda un po' di riflessione
+ * 4-5 siano domande con risposte non ovvie, ma che possano essere comunque risposte in pochi minuti.

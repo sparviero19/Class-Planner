@@ -24,4 +24,5 @@ In designing the summary, I would like you to take into account the following in
 3. Lesson {lesson_num} should be as far as possible self-contained, while taking into account definitions and concept given in previous lessons.
 4. The lesson should present one part for each topic. You can add subheadings if needed. Add depth using the extra material in the references.
 5. The produced text should be in Markdown format with embedded LaTeX equations.
-6. In addition to the aforementioned parts corresponding to the topics, add also a Section for the exercises and the bibliography.
+6. Do not use tables in the summary.
+7. In addition to the aforementioned parts corresponding to the topics, add also a Section for the exercises and the bibliography.
