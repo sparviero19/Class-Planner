@@ -3,44 +3,26 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any
+import abc
 
+# ------------------------------------------------------------
+# Abstract class for state management
+# ------------------------------------------------------------
+class AbstractPipelineManager(abc.ABC):
 
-class PipelineManager:
-    """Manages pipeline state and intermediate file checkpoints"""
-
-    STAGES = [
-        "first_draft",
-        "review",
-        "summary",
-        "handout_draft",
-        "editing_instructions",
-        "final_handout"
-    ]
-
-    def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
-        self.lesson_num = lesson_num
-        self.module_num = module_num
+    def __init__(self, output_dir: Path):
         self.output_dir = output_dir
         self.intermediate_dir = output_dir / "intermediate"
         self.intermediate_dir.mkdir(parents=True, exist_ok=True)
+        self.state = {}
 
-        # State file for this specific lesson
-        self.state_file = self.intermediate_dir / f"lesson_{module_num:03}_{lesson_num:03}_state.json"
-        self.state = self._load_state()
-
+    @abc.abstractmethod
     def _load_state(self) -> dict[str, Any]:
-        """Load pipeline state from disk"""
-        if self.state_file.exists():
-            with open(self.state_file, 'r') as f:
-                return json.load(f)
-        return {
-            "lesson_num": self.lesson_num,
-            "module_num": self.module_num,
-            "created_at": datetime.now().isoformat(),
-            "last_updated": datetime.now().isoformat(),
-            "completed_stages": [],
-            "stage_files": {}
-        }
+        pass
+
+    @abc.abstractmethod
+    def clear_all(self):
+        pass
 
     def _save_state(self):
         """Save pipeline state to disk"""
@@ -50,7 +32,7 @@ class PipelineManager:
 
     def get_stage_file(self, stage: str) -> Path:
         """Get the standard filename for a stage"""
-        return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
+        return self.intermediate_dir / f"{stage}.md"
 
     def is_stage_completed(self, stage: str) -> bool:
         """Check if a stage has been completed"""
@@ -119,11 +101,95 @@ class PipelineManager:
         except ValueError:
             print(f"Unknown stage: {stage}")
 
+
+# ------------------------------------------------------------
+class HandoutPipelineManager (AbstractPipelineManager):
+    """Manages pipeline state and intermediate file checkpoints"""
+
+    STAGES = [
+        "first_draft",
+        "review",
+        "summary",
+        "handout_draft",
+        "editing_instructions",
+        "final_handout"
+    ]
+
+    def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
+        super().__init__(output_dir)
+        self.lesson_num = lesson_num
+        self.module_num = module_num
+
+        # State file for this specific lesson
+        self.state_file = self.intermediate_dir / f"lesson_{module_num:03}_{lesson_num:03}_state.json"
+        self.state = self._load_state()
+
+    def _load_state(self) -> dict[str, Any]:
+        """Load pipeline state from disk"""
+        if self.state_file.exists():
+            with open(self.state_file, 'r') as f:
+                return json.load(f)
+        return {
+            "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+
+    def get_stage_file(self, stage: str) -> Path:
+        """Get the standard filename for a stage"""
+        return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
+
     def clear_all(self):
         """Clear all pipeline state"""
         self.state = {
             "lesson_num": self.lesson_num,
-            "module_num": self.module_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+        self._save_state()
+
+# ------------------------------------------------------------
+class SelfEvalQuizPipelineManager (AbstractPipelineManager):
+
+    STAGES = [
+        "generating_batches",
+        "evaluating_batches",
+    ]
+
+    def __init__(self, lesson_num: int, output_dir: Path):
+        super().__init__(output_dir)
+        self.lesson_num = lesson_num
+
+        # State file for this specific lesson
+        self.state_file = self.intermediate_dir / f"SEQ_lesson_{lesson_num:03}_state.json"
+        self.state = self._load_state()
+
+    def _load_state(self) -> dict[str, Any]:
+        """Load pipeline state from disk"""
+        if self.state_file.exists():
+            with open(self.state_file, 'r') as f:
+                return json.load(f)
+        return {
+            "lesson_num": self.lesson_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+
+    def get_stage_file(self, stage: str) -> Path:
+        """Get the standard filename for a stage"""
+        return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
+
+    def clear_all(self):
+        """Clear all pipeline state"""
+        self.state = {
+            "lesson_num": self.lesson_num,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
             "completed_stages": [],
