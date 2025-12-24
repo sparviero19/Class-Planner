@@ -104,7 +104,7 @@ class AbstractPipelineManager(abc.ABC):
 
 # ------------------------------------------------------------
 class HandoutPipelineManager (AbstractPipelineManager):
-    """Manages pipeline state and intermediate file checkpoints"""
+    """Manages pipeline state and intermediate file checkpoints for HANDOUTS"""
 
     STAGES = [
         "first_draft",
@@ -116,11 +116,14 @@ class HandoutPipelineManager (AbstractPipelineManager):
     ]
 
     def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
-        super().__init__(output_dir)
+        # Create handouts subdirectory
+        handouts_dir = output_dir / "handouts"
+        super().__init__(handouts_dir)
+
         self.lesson_num = lesson_num
         self.module_num = module_num
 
-        # State file for this specific lesson
+        # State file for this specific lesson in handouts/intermediate/
         self.state_file = self.intermediate_dir / f"lesson_{module_num:03}_{lesson_num:03}_state.json"
         self.state = self._load_state()
 
@@ -142,10 +145,74 @@ class HandoutPipelineManager (AbstractPipelineManager):
         """Get the standard filename for a stage"""
         return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
 
+    def get_final_output_path(self, timestamp: int) -> Path:
+        """Get path for final handout output"""
+        return self.output_dir / f"handout_m{self.module_num:03}_l{self.lesson_num:03}_{timestamp}.md"
+
     def clear_all(self):
         """Clear all pipeline state"""
         self.state = {
             "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+        self._save_state()
+
+# ------------------------------------------------------------
+class SlidesPipelineManager(AbstractPipelineManager):
+    """Manages pipeline state and intermediate file checkpoints for SLIDES"""
+
+    STAGES = [
+        "pedagogical_analysis",
+        "slide_budget",
+        "visual_inventory",
+        "content_draft",
+        "review",
+        "final_slides"
+    ]
+
+    def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
+        # Create slides subdirectory
+        slides_dir = output_dir / "slides"
+        super().__init__(slides_dir)
+
+        self.lesson_num = lesson_num
+        self.module_num = module_num
+
+        # State file for this specific lesson in slides/intermediate/
+        self.state_file = self.intermediate_dir / f"slides_lesson_{module_num:03}_{lesson_num:03}_state.json"
+        self.state = self._load_state()
+
+    def _load_state(self) -> dict[str, Any]:
+        """Load pipeline state from disk"""
+        if self.state_file.exists():
+            with open(self.state_file, 'r') as f:
+                return json.load(f)
+        return {
+            "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+
+    def get_stage_file(self, stage: str) -> Path:
+        """Get the standard filename for a stage"""
+        return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
+
+    def get_final_output_path(self, timestamp: int) -> Path:
+        """Get path for final slides output"""
+        return self.output_dir / f"slides_m{self.module_num:03}_l{self.lesson_num:03}_{timestamp}.md"
+
+    def clear_all(self):
+        """Clear all pipeline state"""
+        self.state = {
+            "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
             "completed_stages": [],

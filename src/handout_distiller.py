@@ -55,12 +55,14 @@ def save_output(path, text):
         f.write(text)
 
 
-def generate_handout(lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,
+def generate_handout(subject, language, lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,
                      manage_history=True):
     """
     Generate handout with checkpoint/resume capability
 
     Args:
+        subject: Subject of the lesson (e.g. "Computer Vision")
+        language: Language of the lesson (e.g. "Italian")
         lesson_num: Lesson number
         module_num: Module number
         resume: If True, resume from last checkpoint. If False, start fresh.
@@ -97,10 +99,6 @@ def generate_handout(lesson_num, module_num, resume=True, override_files=None, i
                 console.print(f"✓ Using existing file for '{stage}': {file_path.name}")
             else:
                 console.print(f"✗ File not found for '{stage}': {file_path}")
-
-    # General variables
-    subject = "Computer Vision"
-    language = "Italian"
 
     # module folder
     m_folder = Path(ROOT_DIR) / f"data/input/module {module_num:03}"
@@ -253,8 +251,8 @@ def generate_handout(lesson_num, module_num, resume=True, override_files=None, i
                                             handout_instructions=handout_instructions)
         console.print(Markdown(editorial_corrections))
         final_handout = get_teacher().chat(editorial_corrections)
-        # Save final handout with timestamp in main output folder
-        final_path = output_folder / f"handout_m{module_num:03}_l{lesson_num:03}_{round(time())}.md"
+        # Save final handout with timestamp in handouts/ folder
+        final_path = pipeline.get_final_output_path(round(time()))
         pipeline.save_stage_output("final_handout", final_handout, final_path)
         console.print(f"✓ Final handout saved to: {final_path}")
     else:
