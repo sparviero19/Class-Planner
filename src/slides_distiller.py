@@ -7,6 +7,7 @@ from src.pipeline_manager import SlidesPipelineManager
 from time import time
 from rich.markdown import Markdown
 from rich.console import Console
+import re
 
 
 def load_prompt(prompt_path, **kwargs):
@@ -35,7 +36,7 @@ def extract_module_structure(module_file_path):
         for line in file:
             if line.strip() == "":
                 continue
-            if "lezione" in line.lower():
+            if re.search(r"\b" + re.escape("lezione") + r"\b", line.lower()):
                 # Extract lesson number and title
                 parts = line.split(":")
                 lesson_num = parts[0].lower().replace("lezione", "").strip()
@@ -252,7 +253,8 @@ def generate_slides(subject, language, lesson_num, module_num, resume=True, over
             handout=handout_content,
             pedagogical_analysis=pedagogical_analysis,
             materials=materials,
-            lesson_num=lesson_num
+            lesson_num=lesson_num,
+            topics=topics
         )
 
         content_draft = get_teacher().chat(content_prompt)
@@ -271,7 +273,8 @@ def generate_slides(subject, language, lesson_num, module_num, resume=True, over
             content_draft=content_draft,
             slide_budget_allocation=slide_budget_allocation,
             visual_inventory=visual_inventory,
-            slide_budget=slide_budget
+            slide_budget=slide_budget,
+            topics=topics
         )
 
         review = get_reviewer().chat(review_prompt)
@@ -292,7 +295,9 @@ def generate_slides(subject, language, lesson_num, module_num, resume=True, over
             review=review,
             visual_inventory=visual_inventory,
             lesson_num=lesson_num,
-            module_num=module_num
+            module_structure=module_structure,
+            module_num=module_num,
+            slide_budget_allocation=slide_budget_allocation,
         )
 
         final_slides = get_teacher().chat(finalize_prompt)
@@ -302,6 +307,27 @@ def generate_slides(subject, language, lesson_num, module_num, resume=True, over
         console.print(f"✓ Final slides saved to: {final_path}")
     else:
         console.print(Markdown("## Step 6: ✓ Final slides already exist"))
+        final_slides = pipeline.get_stage_output("final_slides")
+
+    # stage 7: Slides instruction distillation
+    if not pipeline.is_stage_completed("slides_distillation"):
+        console.print(Markdown("## Step 7: Distillation of slides assembly instructions"))
+
+        distillation_prompt = load_prompt(
+            Path(ROOT_DIR) / f"src/prompts/slides_distiller/slides_distillation.teacher{stateless}.md",
+            slides_deck_plan= final_slides,
+            lesson_num=lesson_num,
+            module_num=module_num,
+        )
+
+        distilled_slides = get_teacher().chat(distillation_prompt)
+        # Save final slides with timestamp in slides/ folder
+        distilled_path = pipeline.get_final_distilled_output_path(round(time()))
+        pipeline.save_stage_output("distilled_slides", distilled_slides, distilled_path)
+        console.print(f"✓ Distilled instructions for Final slides saved to: {distilled_path}")
+    else:
+        console.print(Markdown("## Step 6: ✓ Final slides already exist"))
+
 
     console.print(Markdown("## ✓ Slides Generation Completed!"))
 

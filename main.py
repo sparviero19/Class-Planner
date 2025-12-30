@@ -33,6 +33,26 @@ def main():
     resume_handout = True          # Resume from last checkpoint (handout)
     resume_slides = True           # Resume from last checkpoint (slides)
 
+    # Reset pipelines from specific stages:
+        # Reset handout pipeline from a specific stage if needed
+        # HANDOUT STAGES:
+        #     "first_draft",          0
+        #     "review",               1
+        #     "summary",              2
+        #     "handout_draft",        3
+        #     "editing_instructions", 4
+        #     "final_handout"         5
+        # SLIDES STAGES:
+        #     "pedagogical_analysis",  0
+        #     "slide_budget",          1
+        #     "visual_inventory",      2
+        #     "content_draft",         3
+        #     "review",                4
+        #     "final_slides",          5
+        #     "slides_distillation"    6
+    reset_handout_stage = None  # Set to stage number (0-5) or stage name to reset from
+    reset_slides_stage = 6  # Set to stage number (0-6) or stage name to reset from
+
     # Slide budget (only for slides pipeline)
     slide_budget = 35              # Total number of content slides to generate
 
@@ -56,17 +76,7 @@ def main():
     # ============================================================
 
     # Reset handout pipeline from a specific stage if needed
-    """
-    HANDOUT STAGES:
-        "first_draft",          0
-        "review",               1
-        "summary",              2
-        "handout_draft",        3
-        "editing_instructions", 4
-        "final_handout"         5
-    """
     handout_stages = {str(i): s for i, s in enumerate(HandoutPipelineManager.STAGES)}
-    reset_handout_stage = None  # Set to stage number (0-5) or stage name to reset from
 
     if reset_handout_stage is not None:
         if isinstance(reset_handout_stage, int):
@@ -87,7 +97,6 @@ def main():
         "final_slides"           5
     """
     slides_stages = {str(i): s for i, s in enumerate(SlidesPipelineManager.STAGES)}
-    reset_slides_stage = None  # Set to stage number (0-5) or stage name to reset from
 
     if reset_slides_stage is not None:
         if isinstance(reset_slides_stage, int):
@@ -128,6 +137,8 @@ def main():
         print("\n🔄 Running SLIDES generation pipeline...")
         print("-" * 60)
         generate_slides(
+            subject=subject,
+            language=language,
             lesson_num=lesson_num,
             module_num=module_num,
             resume=resume_slides,

@@ -1,5 +1,3 @@
-Subject: Visual Inventory Extraction from Reference Materials
-
 Context:
 You have access to the following reference materials (PDFs) that have been uploaded:
 {materials}

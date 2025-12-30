@@ -1,9 +1,10 @@
-Subject: Generate Slide Content with Visual Assignments
-
 Context:
 You are now creating the actual slide deck for lesson {lesson_num}.
 
 You have the following resources:
+
+**Topics tp be covered in this lesson**:
+{topics}
 
 **Slide Budget Allocation**:
 {slide_budget_allocation}
@@ -21,7 +22,8 @@ You have the following resources:
 {materials}
 
 Task:
-Generate complete slide content following the budget allocation. For EACH slide, you must provide:
+Generate complete slide content following the budget allocation. 
+For EACH slide, you must provide:
 
 1. **Slide number** (sequential)
 2. **Section/Topic** (which topic this slide belongs to)
@@ -52,6 +54,7 @@ Guidelines:
 - Use progressive build-up for complex concepts
 - Create natural transitions between topics
 - Keep pedagogical flow in mind
+- No need to include introductions to the lesson topics, bibliography, and exercises
 
 Output Format:
 
@@ -139,6 +142,7 @@ List all new visuals that need to be created:
 ```
 
 Important:
+- **Topics** the topic names should follow the topics given fro the lesson
 - **Every slide** must have specific content, not just an outline
 - **Visual assignments** must be concrete (use Visual IDs from inventory)
 - **Balance content types** across the deck

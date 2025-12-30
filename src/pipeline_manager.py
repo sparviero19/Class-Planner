@@ -171,13 +171,16 @@ class SlidesPipelineManager(AbstractPipelineManager):
         "visual_inventory",
         "content_draft",
         "review",
-        "final_slides"
+        "final_slides",
+        "slides_distillation"
     ]
 
     def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
         # Create slides subdirectory
         slides_dir = output_dir / "slides"
         super().__init__(slides_dir)
+        self.distilled_dir = slides_dir / "distilled"
+        self.distilled_dir.mkdir(parents=True, exist_ok=True)
 
         self.lesson_num = lesson_num
         self.module_num = module_num
@@ -207,6 +210,10 @@ class SlidesPipelineManager(AbstractPipelineManager):
     def get_final_output_path(self, timestamp: int) -> Path:
         """Get path for final slides output"""
         return self.output_dir / f"slides_m{self.module_num:03}_l{self.lesson_num:03}_{timestamp}.md"
+
+    def get_final_distilled_output_path(self, timestamp: int) -> Path:
+        """Get path for distilled instruction for final slides output"""
+        return self.distilled_dir / f"distilled_slides_m{self.module_num:03}_l{self.lesson_num:03}_{timestamp}.md"
 
     def clear_all(self):
         """Clear all pipeline state"""

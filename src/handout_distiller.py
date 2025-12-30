@@ -6,6 +6,7 @@ from src.pipeline_manager import HandoutPipelineManager
 from time import time
 from rich.markdown import Markdown
 from rich.console import Console
+import re
 
 
 def load_materials_paths(input_folder):
@@ -33,7 +34,7 @@ def extract_module_structure(module_file_path):
         for line in file:
             if line.strip() == "":
                 continue
-            if "lezione" in line.lower():
+            if re.search(r"\b" + re.escape("lezione") + r"\b", line.lower()):
                 # Extract lesson number and title
                 parts = line.split(":")
                 lesson_num = parts[0].lower().replace("Lezione", "").strip()

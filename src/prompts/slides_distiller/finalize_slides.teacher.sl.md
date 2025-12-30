@@ -1,7 +1,9 @@
-Subject: Finalize Slide Deck with Review Feedback
-
 Context:
-You are producing the final, polished version of the slide deck for lesson {lesson_num} in module {module_num}.
+You are producing the final, polished version of the slide deck for lesson {lesson_num} in a module {module_num} 
+with the following contents:
+{module_structure}
+
+**Slide Budget Target**: {slide_budget_allocation} content slides
 
 **Content Draft**:
 {content_draft}
@@ -11,6 +13,18 @@ You are producing the final, polished version of the slide deck for lesson {less
 
 **Visual Inventory** (for reference):
 {visual_inventory}
+
+**Guidelines**:
+Remember the original guidelines for this lesson:
+- Follow the slide budget allocation strictly
+- Assign visuals from inventory whenever possible
+- For gaps in inventory, provide detailed visual specifications
+- Balance text density - not too sparse, not too crowded
+- Ensure mathematical slides are not overloaded with equations
+- Use progressive build-up for complex concepts
+- Create natural transitions between topics
+- Keep pedagogical flow in mind
+- No need to include introductions to the lesson topics, bibliography, and exercises
 
 Task:
 Create the final slide deck by:
@@ -26,8 +40,6 @@ Create the final slide deck by:
 **Course**: [Course Name]
 **Topic**: [Lesson Title/Topics]
 **Total Slides**: X content slides
-**Estimated Duration**: Y minutes
-**Date**: [Generation date]
 
 ---
 
@@ -51,35 +63,12 @@ Create the final slide deck by:
 
 ---
 
-## Instructor Notes
-
-**Overall Teaching Strategy**:
-[Brief overview of pedagogical approach for this lesson]
-
-**Timing Guidance**:
-- Section 1: ~X minutes
-- Section 2: ~Y minutes
-- [...]
-
-**Key Emphasis Points**:
-- [Critical concept that needs extra attention]
-- [Common student difficulty to address]
-[...]
-
-**Suggested Interactive Elements**:
-- [Opportunities for questions/discussion]
-- [Potential demonstrations]
-[...]
-
----
-
 # SLIDE CONTENT
 
 ---
 
 ## Slide 1: [Title]
 **Section**: [Topic/Section Name]
-**Duration**: ~X min
 
 **Content**:
 [Complete, polished slide text]
@@ -104,7 +93,6 @@ Create the final slide deck by:
 
 ## Slide 2: [Title]
 **Section**: [Topic/Section Name]
-**Duration**: ~X min
 
 [...complete slide specification...]
 
@@ -163,60 +151,6 @@ Priority order for creation:
 - [External link/resource 1] - Used in Slide X
 - [External link/resource 2] - Used in Slide Y
 [...]
-
----
-
-## Technical Specifications
-
-**Recommended Format**: [PDF/PowerPoint/Beamer/etc.]
-**Aspect Ratio**: [16:9 / 4:3]
-**Font Recommendations**:
-- Headings: [Font and size]
-- Body text: [Font and size]
-- Code: [Monospace font]
-
-**Color Scheme**: [Suggested colors for consistency]
-
-**Accessibility Notes**:
-- [Font size minimums]
-- [Color contrast considerations]
-- [Alternative text for visuals]
-
----
-
-## Revision History
-- **Version 1.0** - Initial generation
-- **Version 1.1** - Applied review feedback: [summary of changes]
-
----
-
-## Quality Checklist
-
-✓ All critical review issues addressed
-✓ All slides have complete content
-✓ All visuals assigned or specified
-✓ Teaching notes provided for each slide
-✓ Consistent terminology throughout
-✓ Proper equation formatting
-✓ Clear learning objectives stated
-✓ Timing estimates provided
-✓ Accessibility considerations noted
-
----
-
-## Final Statistics
-
-- **Total content slides**: X
-- **Slides per topic**:
-  - Topic 1: Y slides
-  - Topic 2: Z slides
-  - [...]
-- **Visual assignments**:
-  - From inventory: X slides
-  - New visuals needed: Y slides
-  - Text/equation only: Z slides
-- **Average content density**: [Light/Medium/Heavy]
-- **Estimated presentation time**: X minutes
 
 ---
 
