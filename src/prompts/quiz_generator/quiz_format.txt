@@ -1,0 +1,7 @@
+NUMERO DOMANDA,TESTO DOMANDA,TESTO RISPOSTA 1,TESTO RISPOSTA 2,TESTO RISPOSTA 3,TESTO RISPOSTA 4,NUMERO RELATIVO ALLA RISPOSTAESATTA,TITOLO VIDEOLEZIONE,TITOLO PARAGRAFO,DIFFICOLTA' (da 1 a 5)
+1,Domanda - finisce sempre con : e inizia con lettera maiuscola,Risposta - Inizia sempre con lettera minuscola e non prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),Risposta - Inizia sempre con lettera minuscola e non prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),Risposta - Inizia sempre con lettera minuscola e non prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),Risposta - Inizia sempre con lettera minuscola e non prevede alcuna punteggiatura alla fine (non inserire . ; : ecc),"Contiene il numero della risposta esatta (1, 2, 3 o 4)",Titolo della videolezione (per esteso),Titolo del paragrafo (per esteso),Decisa dal docente in una scala da 1 a 5
+2,,,,,,,,,
+3,,,,,,,,,
+4,,,,,,,,,
+5,,,,,,,,,
+,,,,,,,,,

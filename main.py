@@ -1,8 +1,9 @@
 from pathlib import Path
 from config.definitions import ROOT_DIR, load_api_keys
-from src.pipeline_manager import HandoutPipelineManager, SlidesPipelineManager
+from src.pipeline_manager import HandoutPipelineManager, SlidesPipelineManager, SelfEvalQuizPipelineManager
 from src.handout_distiller import generate_handout, reset_pipeline, show_pipeline_status
 from src.slides_distiller import generate_slides, reset_slides_pipeline, show_slides_pipeline_status
+from src.quizzes_gen import generate_self_eval_quizzes, show_quiz_pipeline_status, reset_quiz_pipeline
 
 
 def main():
@@ -22,16 +23,25 @@ def main():
 
     subject = "Computer Vision"
     language = "Italian"
-    module_num = 1
-    lesson_num = 6
+    module_num = 2
+    lesson_num = 9
 
     # Pipeline selection
-    run_handout_pipeline = True    # Set to True to run handout generation
-    run_slides_pipeline = True     # Set to True to run slides generation
+    run_handout_pipeline = False    # Set to True to run handout generation
+    run_slides_pipeline = False     # Set to True to run slides generation
+    run_quiz_pipeline = True       # Set to True to run quiz generation
+
+    # Agent settings
+    quiz_agent_type = "gemini"    # "gemini" or "ollama"
+    if quiz_agent_type == "ollama":
+        quiz_model_name = "ministral-3:latest" # e.g. "ministral-3:latest" for ollama or "gemini-2.0-flash"
+    else:
+        quiz_model_name = "gemini-2.5-flash-lite"
 
     # Resume settings
     resume_handout = True          # Resume from last checkpoint (handout)
     resume_slides = True           # Resume from last checkpoint (slides)
+    resume_quiz = True             # Resume from last checkpoint (quiz)
 
     # Reset pipelines from specific stages:
         # Reset handout pipeline from a specific stage if needed
@@ -51,10 +61,13 @@ def main():
         #     "final_slides",          5
         #     "slides_distillation"    6
     reset_handout_stage = None  # Set to stage number (0-5) or stage name to reset from
-    reset_slides_stage = 6  # Set to stage number (0-6) or stage name to reset from
+    reset_slides_stage = None  # Set to stage number (0-6) or stage name to reset from
 
     # Slide budget (only for slides pipeline)
     slide_budget = 35              # Total number of content slides to generate
+
+    # Number of questions to generate
+    num_questions = 10
 
     # ============================================================
     # PATHS
@@ -70,6 +83,7 @@ def main():
     # Uncomment to see current pipeline status before running
     # show_pipeline_status(lesson_num, module_num, output_folder)
     # show_slides_pipeline_status(lesson_num, module_num, output_folder)
+    # show_quiz_pipeline_status(lesson_num, module_num, output_folder)
 
     # ============================================================
     # RESET PIPELINES (Optional)
@@ -87,15 +101,6 @@ def main():
         print(f"Handout pipeline reset from stage: {stage_name}")
 
     # Reset slides pipeline from a specific stage if needed
-    """
-    SLIDES STAGES:
-        "pedagogical_analysis",  0
-        "slide_budget",          1
-        "visual_inventory",      2
-        "content_draft",         3
-        "review",                4
-        "final_slides"           5
-    """
     slides_stages = {str(i): s for i, s in enumerate(SlidesPipelineManager.STAGES)}
 
     if reset_slides_stage is not None:
@@ -105,6 +110,18 @@ def main():
             stage_name = reset_slides_stage
         reset_slides_pipeline(lesson_num, module_num, from_stage=stage_name, output_dir=output_folder)
         print(f"Slides pipeline reset from stage: {stage_name}")
+
+    # Reset quiz pipeline from a specific stage if needed
+    quiz_stages = {str(i): s for i, s in enumerate(SelfEvalQuizPipelineManager.STAGES)}
+    reset_quiz_stage = None # Set to stage number (0-2) or stage name to reset from
+
+    if reset_quiz_stage is not None:
+        if isinstance(reset_quiz_stage, int):
+            stage_name = quiz_stages[str(reset_quiz_stage)]
+        else:
+            stage_name = reset_quiz_stage
+        reset_quiz_pipeline(lesson_num, module_num, from_stage=stage_name, output_dir=output_folder)
+        print(f"Quiz pipeline reset from stage: {stage_name}")
 
     # ============================================================
     # RUN PIPELINES
@@ -151,6 +168,25 @@ def main():
     else:
         print("\n⏭️  Skipping slides generation (run_slides_pipeline=False)")
 
+    # Run quiz generation pipeline
+    if run_quiz_pipeline:
+        print("\n🔄 Running QUIZ generation pipeline...")
+        print("-" * 60)
+        generate_self_eval_quizzes(
+            subject=subject,
+            language=language,
+            lesson_num=lesson_num,
+            module_num=module_num,
+            resume=resume_quiz,
+            output_folder=output_folder,
+            num_questions=num_questions,
+            agent_type=quiz_agent_type,
+            model_name=quiz_model_name
+        )
+        print("\n✅ Quiz pipeline completed!")
+    else:
+        print("\n⏭️  Skipping quiz generation (run_quiz_pipeline=False)")
+
     # ============================================================
     # COMPLETION
     # ============================================================
@@ -160,7 +196,7 @@ def main():
     print("=" * 60)
 
     # Show final status
-    if run_handout_pipeline or run_slides_pipeline:
+    if run_handout_pipeline or run_slides_pipeline or run_quiz_pipeline:
         print("\nFinal pipeline status:")
         if run_handout_pipeline:
             print("\n📄 Handout Pipeline:")
@@ -168,6 +204,9 @@ def main():
         if run_slides_pipeline:
             print("\n📊 Slides Pipeline:")
             show_slides_pipeline_status(lesson_num, module_num, output_folder)
+        if run_quiz_pipeline:
+            print("\n❓ Quiz Pipeline:")
+            show_quiz_pipeline_status(lesson_num, module_num, output_folder)
 
 
 if __name__ == "__main__":

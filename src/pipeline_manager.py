@@ -228,19 +228,26 @@ class SlidesPipelineManager(AbstractPipelineManager):
         self._save_state()
 
 # ------------------------------------------------------------
-class SelfEvalQuizPipelineManager (AbstractPipelineManager):
+class SelfEvalQuizPipelineManager(AbstractPipelineManager):
+    """Manages pipeline state and intermediate file checkpoints for QUIZZES"""
 
     STAGES = [
-        "generating_batches",
-        "evaluating_batches",
+        "generating_quiz_draft",
+        "reformat_csv",
+        "evaluating_quiz_draft",
+        "final_quiz"
     ]
 
-    def __init__(self, lesson_num: int, output_dir: Path):
-        super().__init__(output_dir)
+    def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
+        # Create quizzes subdirectory
+        quizzes_dir = output_dir / "quizzes"
+        super().__init__(quizzes_dir)
+
         self.lesson_num = lesson_num
+        self.module_num = module_num
 
         # State file for this specific lesson
-        self.state_file = self.intermediate_dir / f"SEQ_lesson_{lesson_num:03}_state.json"
+        self.state_file = self.intermediate_dir / f"quiz_lesson_{module_num:03}_{lesson_num:03}_state.json"
         self.state = self._load_state()
 
     def _load_state(self) -> dict[str, Any]:
@@ -250,6 +257,7 @@ class SelfEvalQuizPipelineManager (AbstractPipelineManager):
                 return json.load(f)
         return {
             "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
             "completed_stages": [],
@@ -260,10 +268,15 @@ class SelfEvalQuizPipelineManager (AbstractPipelineManager):
         """Get the standard filename for a stage"""
         return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
 
+    def get_final_output_path(self, timestamp: int) -> Path:
+        """Get path for final quiz output"""
+        return self.output_dir / f"quiz_m{self.module_num:03}_l{self.lesson_num:03}_{timestamp}.csv"
+
     def clear_all(self):
         """Clear all pipeline state"""
         self.state = {
             "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
             "completed_stages": [],

@@ -1,6 +1,7 @@
 from openai import OpenAI
 from anthropic import Anthropic
 import google.genai as googleai
+from ollama import Client as OllamaClient
 from abc import ABC, abstractmethod
 from pathlib import Path
 from config.definitions import ROOT_DIR, google_api_key
@@ -213,9 +214,9 @@ class AnthropicAgent(Agent):
         return self.agent_api.messages.create(model=self.model_api, messages=messages, max_tokens=1000)
 
 
-class OpenAIAgent:
+class OpenAIAgent(Agent):
 
-    def __init__(self, name, model, instructions, tools):
+    def __init__(self, name, model, instructions, tools=None):
         Agent.__init__(self, name, model, instructions, tools)
         self.agent_api = OpenAI()
         self.history = [{"role": "user", "content": None}]
@@ -232,5 +233,28 @@ class OpenAIAgent:
             model=self.model,
             messages=messages,
             temperature=0.0,
+        )
+        return self.response
+
+
+class OllamaAgent(Agent):
+
+    def __init__(self, name, model, instructions, tools=None):
+        Agent.__init__(self, name, model, instructions, tools)
+        self.agent_api = OllamaClient()
+
+    def chat(self, prompt):
+        return self._call_llm(prompt)['message']['content']
+
+    def _call_llm(self, prompt, history=None):
+        messages = [{"role": "system", "content": self.instructions}]
+        if history is not None:
+            messages += history
+        messages += [{"role": "user", "content": prompt}]
+        
+        self.response = self.agent_api.chat(
+            model=self.model,
+            messages=messages,
+            options={'temperature': 0.0}
         )
         return self.response
