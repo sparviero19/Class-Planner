@@ -1,5 +1,6 @@
 from pathlib import Path
 from config.definitions import ROOT_DIR
+from config.config_loader import get_config
 from src.pipeline_manager import SelfEvalQuizPipelineManager
 from src.quizzes_gen import (generate_self_eval_quizzes, show_quiz_pipeline_status, reset_quiz_pipeline,
                              generate_exam_quizzes)
@@ -38,22 +39,28 @@ def main():
     :return:
     """
 
-    subject = "Computer Vision"
-    language = "Italian"
-    modules = [3] #list(range(1, 6))
+    # Load configuration
+    config = get_config()
+
+    # Extract values from config
+    subject = config.course.subject
+    language = config.course.language
+    subfolder_name = config.course.subfolder_name
+
+    # Exam-specific settings (could be added to config.yaml if needed)
+    modules = [3]  # list(range(1, 6))
     lessons = "all"  # TODO add fine grained control
-    num_questions = 5
+    num_questions = config.quiz.num_questions
     difficulty = 5
     generate_se_quizzes = False
     reset_quiz_stage = None  # this is effective in combination with generate _self_eval_quizzes
 
-    quiz_agent_type = "gemini"
-    if quiz_agent_type == "ollama":
-        quiz_model_name = "ministral-3:latest"
-    else:
-        quiz_model_name = "gemini-2.5-flash-lite"
+    # Agent configuration from config
+    quiz_agent_config = config.get_agent_config('quiz_generator')
+    quiz_agent_type = quiz_agent_config.type
+    quiz_model_name = quiz_agent_config.get_model()
 
-    resume_quiz = True
+    resume_quiz = config.resume.quiz
 
     print("=" * 60)
     print(f"Class Notes Distiller - Exam quizzes generation for Modules {modules}")
@@ -61,7 +68,7 @@ def main():
 
     for module_num in modules:
 
-        module_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
+        module_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
         lessons_list = None
         if isinstance(lessons, str):
             if lessons == "all":
@@ -96,8 +103,7 @@ def main():
             # ============================================================
             if generate_se_quizzes:
                 generate_self_eval_quizzes(
-                    subject=subject,
-                    language=language,
+                    config=config,
                     lesson_num=lesson_num,
                     module_num=module_num,
                     resume=resume_quiz,
@@ -109,8 +115,7 @@ def main():
                 print(f"\n✅ Self-eval Quiz pipeline for lesson {lesson_num} completed!")
 
             generate_exam_quizzes(
-                subject=subject,
-                language=language,
+                config=config,
                 lesson_num=lesson_num,
                 module_num=module_num,
                 resume=resume_quiz,

@@ -54,22 +54,32 @@ def find_latest_X(X: str, lesson_num: int, module_num: int, output_folder: Path)
     return latest_file
 
 
-def generate_self_eval_quizzes(subject, language, lesson_num, module_num, resume=True, output_folder=None,
-                               quiz_guide_path=None, quiz_format_path=None, num_questions=5, agent_type="gemini", model_name=None):
+def generate_self_eval_quizzes(config, lesson_num, module_num, resume=True, output_folder=None,
+                               quiz_guide_path=None, quiz_format_path=None, num_questions=None, agent_type=None, model_name=None):
     """
     Generate self-evaluation quizzes from a handout with checkpoint/resume capability.
     """
+    # Extract from config
+    subject = config.course.subject
+    language = config.course.language
+    subfolder_name = config.course.subfolder_name
+
     if not output_folder:
-        output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
+        output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
     if not quiz_guide_path:
         quiz_guide_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/guide.txt"
     if not quiz_format_path:
         quiz_format_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/quiz_format.txt"
 
-    if agent_type == "ollama" and model_name is None: # use only for debug! it produces wrong or gibberish quizzes
-        model_name = "ministral-3:latest"
-    elif agent_type == "gemini" and model_name is None:
-        model_name = "gemini-3.1-flash-lite-preview"
+    # Use config values if not provided
+    if num_questions is None:
+        num_questions = config.quiz.num_questions
+
+    quiz_agent_config = config.get_agent_config('quiz_generator')
+    if agent_type is None:
+        agent_type = quiz_agent_config.type
+    if model_name is None:
+        model_name = quiz_agent_config.get_model()
 
     api_keys = load_api_keys()
     console = Console()
@@ -114,7 +124,8 @@ def generate_self_eval_quizzes(subject, language, lesson_num, module_num, resume
     def get_evaluator():
         system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/quiz_generator/system.quiz_evaluator.md",
                                       course_subject=subject, guide=quiz_guide, format=quiz_format)
-        return OpenAIAgent("E", "gpt-4o-mini", system_prompt_E)
+        evaluator_config = config.get_agent_config('reviewer')  # Use reviewer config for evaluator
+        return OpenAIAgent("E", evaluator_config.get_model(), system_prompt_E)
 
     # Pipeline logic
     next_stage = pipeline.get_next_stage()
@@ -229,24 +240,33 @@ def reset_quiz_pipeline(lesson_num, module_num, from_stage=None, output_dir=None
     else:
         pipeline.clear_all()
 
-def generate_exam_quizzes(subject, language, lesson_num, module_num, resume=True, output_folder=None,
-                          quiz_guide_path=None, quiz_format_path=None, num_questions=5, difficulty_level=5,
-                          agent_type="gemini", model_name=None):
+def generate_exam_quizzes(config, lesson_num, module_num, resume=True, output_folder=None,
+                          quiz_guide_path=None, quiz_format_path=None, num_questions=None, difficulty_level=5,
+                          agent_type=None, model_name=None):
     """
     Generate final exam quizzes from a handout and self-eval quizzes (optional) with checkpoint/resume capability.
     """
+    # Extract from config
+    subject = config.course.subject
+    language = config.course.language
+    subfolder_name = config.course.subfolder_name
 
     if not output_folder:
-        output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
+        output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
     if not quiz_guide_path:
         quiz_guide_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/guide.txt"
     if not quiz_format_path:
         quiz_format_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/quiz_format.txt"
 
-    if agent_type == "ollama" and model_name is None: # use only for debug! it produces wrong or gibberish quizzes
-        model_name = "ministral-3:latest"
-    elif agent_type == "gemini" and model_name is None:
-        model_name = "gemini-3.1-flash-lite-preview"
+    # Use config values if not provided
+    if num_questions is None:
+        num_questions = config.quiz.num_questions
+
+    quiz_agent_config = config.get_agent_config('quiz_generator')
+    if agent_type is None:
+        agent_type = quiz_agent_config.type
+    if model_name is None:
+        model_name = quiz_agent_config.get_model()
 
     api_keys = load_api_keys()
     console = Console()
@@ -298,12 +318,13 @@ def generate_exam_quizzes(subject, language, lesson_num, module_num, resume=True
         if agent_type == "ollama":
             return OllamaAgent("T", model_name, system_prompt_T)
         else:
-            return GeminiAgent("T", model_name, system_prompt_T, manage_history=False)
+            return GeminiAgent("T", model_name, system_prompt_T, manage_history=False, tools=None, api_key=api_keys['google'])
 
     def get_evaluator():
         system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/quiz_generator/system.quiz_evaluator.md",
                                       course_subject=subject, guide=quiz_guide, format=quiz_format)
-        return OpenAIAgent("E", "gpt-4o-mini", system_prompt_E)
+        evaluator_config = config.get_agent_config('reviewer')  # Use reviewer config for evaluator
+        return OpenAIAgent("E", evaluator_config.get_model(), system_prompt_E)
 
     # Pipeline logic
     next_stage = pipeline.get_next_stage()

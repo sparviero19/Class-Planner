@@ -1,5 +1,6 @@
 from pathlib import Path
-from config.definitions import ROOT_DIR, load_api_keys
+from config.definitions import ROOT_DIR
+from config.config_loader import get_config
 from src.pipeline_manager import HandoutPipelineManager, SlidesPipelineManager, SelfEvalQuizPipelineManager
 from src.handout_distiller import generate_handout, reset_pipeline, show_pipeline_status
 from src.slides_distiller import generate_slides, reset_slides_pipeline, show_slides_pipeline_status
@@ -10,77 +11,65 @@ def main():
     """
     Main entry point for running handout and slides generation pipelines.
 
-    Configure the settings below to:
+    All configuration is now managed in config.yaml.
+    Edit that file to:
     - Choose which pipeline(s) to run
     - Set lesson and module numbers
+    - Configure agent models
     - Enable/disable resume functionality
     - Reset pipelines from specific stages
     """
 
     # ============================================================
-    # CONFIGURATION
+    # LOAD CONFIGURATION
     # ============================================================
 
-    subject = "Computer Vision"
-    subfolder_name = "ComputerVision"
-    language = "Italian"
-    module_num = 1
-    lesson_num = 7
+    config = get_config()
+
+    # Extract configuration values
+    subject = config.course.subject
+    subfolder_name = config.course.subfolder_name
+    language = config.course.language
+    module_num = config.lesson.module_num
+    lesson_num = config.lesson.lesson_num
 
     input_folder = Path(ROOT_DIR) / f"data/input/{subfolder_name}/module {module_num:03}/Lez {lesson_num:03} materials"
     output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
 
     # Pipeline selection
-    run_handout_pipeline = False    # Set to True to run handout generation
-    run_slides_pipeline = True     # Set to True to run slides generation
-    run_quiz_pipeline = False       # Set to True to run quiz generation
+    run_handout_pipeline = config.pipelines.run_handout
+    run_slides_pipeline = config.pipelines.run_slides
+    run_quiz_pipeline = config.pipelines.run_quiz
 
-    # Agent settings
-    quiz_agent_type = "gemini"    # "gemini" or "ollama"
-    if quiz_agent_type == "ollama":
-        quiz_model_name = "ministral-3:latest" # e.g. "ministral-3:latest" for ollama or "gemini-2.0-flash"
-    else:
-        quiz_model_name = "gemini-3.1-flash-lite-preview"
+    # Agent settings (quiz generator)
+    quiz_agent_config = config.get_agent_config('quiz_generator')
+    quiz_agent_type = quiz_agent_config.type
+    quiz_model_name = quiz_agent_config.get_model()
 
     # Resume settings
-    resume_handout = True          # Resume from last checkpoint (handout)
-    resume_slides = True           # Resume from last checkpoint (slides)
-    resume_quiz = True             # Resume from last checkpoint (quiz)
+    resume_handout = config.resume.handout
+    resume_slides = config.resume.slides
+    resume_quiz = config.resume.quiz
 
-    # Reset pipelines from specific stages:
-        # Reset handout pipeline from a specific stage if needed
-        # HANDOUT STAGES:
-        #     "first_draft",          0
-        #     "review",               1
-        #     "summary",              2
-        #     "handout_draft",        3
-        #     "editing_instructions", 4
-        #     "final_handout"         5
-        # SLIDES STAGES:
-        #     "pedagogical_analysis",  0
-        #     "slide_budget",          1
-        #     "visual_inventory",      2
-        #     "content_draft",         3
-        #     "review",                4
-        #     "final_slides",          5
-        #     "slides_distillation"    6
-    reset_handout_stage = None  # Set to stage number (0-5) or stage name to reset from
-    reset_slides_stage = None  # Set to stage number (0-6) or stage name to reset from
+    # Reset settings
+    reset_handout_stage = config.reset.handout_stage
+    reset_slides_stage = config.reset.slides_stage
 
-    # Slide budget (only for slides pipeline)
-    slide_budget = 35              # Total number of content slides to generate
-
-    # Number of questions to generate
-    num_questions = 10
+    # Pipeline-specific settings
+    slide_budget = config.slides.slide_budget
+    num_questions = config.quiz.num_questions
 
     # ============================================================
     # SHOW PIPELINE STATUS (Optional)
     # ============================================================
 
-    # Uncomment to see current pipeline status before running
-    # show_pipeline_status(lesson_num, module_num, output_folder)
-    # show_slides_pipeline_status(lesson_num, module_num, output_folder)
-    show_quiz_pipeline_status(lesson_num, module_num, output_folder)
+    # Show pipeline status based on config
+    if config.advanced.show_status.handout:
+        show_pipeline_status(lesson_num, module_num, output_folder)
+    if config.advanced.show_status.slides:
+        show_slides_pipeline_status(lesson_num, module_num, output_folder)
+    if config.advanced.show_status.quiz:
+        show_quiz_pipeline_status(lesson_num, module_num, output_folder)
 
     # ============================================================
     # RESET PIPELINES (Optional)
@@ -133,8 +122,7 @@ def main():
         print("\n🔄 Running HANDOUT generation pipeline...")
         print("-" * 60)
         generate_handout(
-            subject=subject,
-            language=language,
+            config=config,
             lesson_num=lesson_num,
             module_num=module_num,
             resume=resume_handout,
@@ -144,15 +132,14 @@ def main():
         )
         print("\n✅ Handout pipeline completed!")
     else:
-        print("\n⏭️  Skipping handout generation (run_handout_pipeline=False)")
+        print("\n⏭️  Skipping handout generation (config: pipelines.run_handout=false)")
 
     # Run slides generation pipeline
     if run_slides_pipeline:
         print("\n🔄 Running SLIDES generation pipeline...")
         print("-" * 60)
         generate_slides(
-            subject=subject,
-            language=language,
+            config=config,
             lesson_num=lesson_num,
             module_num=module_num,
             resume=resume_slides,
@@ -163,15 +150,14 @@ def main():
         )
         print("\n✅ Slides pipeline completed!")
     else:
-        print("\n⏭️  Skipping slides generation (run_slides_pipeline=False)")
+        print("\n⏭️  Skipping slides generation (config: pipelines.run_slides=false)")
 
     # Run quiz generation pipeline
     if run_quiz_pipeline:
         print("\n🔄 Running QUIZ generation pipeline...")
         print("-" * 60)
         generate_self_eval_quizzes(
-            subject=subject,
-            language=language,
+            config=config,
             lesson_num=lesson_num,
             module_num=module_num,
             resume=resume_quiz,
@@ -182,7 +168,7 @@ def main():
         )
         print("\n✅ Quiz pipeline completed!")
     else:
-        print("\n⏭️  Skipping quiz generation (run_quiz_pipeline=False)")
+        print("\n⏭️  Skipping quiz generation (config: pipelines.run_quiz=false)")
 
     # ============================================================
     # COMPLETION

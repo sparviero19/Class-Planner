@@ -56,25 +56,34 @@ def save_output(path, text):
         f.write(text)
 
 
-def generate_handout(subject, language, lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,
-                     manage_history=True):
+def generate_handout(config, lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,
+                     manage_history=None):
     """
     Generate handout with checkpoint/resume capability
 
     Args:
-        subject: Subject of the lesson (e.g. "Computer Vision")
-        language: Language of the lesson (e.g. "Italian")
+        config: Configuration object from config_loader
         lesson_num: Lesson number
         module_num: Module number
         resume: If True, resume from last checkpoint. If False, start fresh.
         override_files: Dict mapping stage names to file paths for pre-existing files
                        Example: {"summary": "path/to/my_edited_summary.md"}
         manage_history: If True, use google api automatic chat history. If False, history is handled manually.
+                       If None, uses config setting.
     """
+    # Extract from config
+    subject = config.course.subject
+    language = config.course.language
+    subfolder_name = config.course.subfolder_name
+
     if not input_folder:
-        input_folder = Path(ROOT_DIR) / f"data/input/module {module_num:03}/Lez {lesson_num:03} materials"
+        input_folder = Path(ROOT_DIR) / f"data/input/{subfolder_name}/module {module_num:03}/Lez {lesson_num:03} materials"
     if not output_folder:
-        output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
+        output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
+
+    if manage_history is None:
+        manage_history = config.advanced.manage_history
+
     stateless = ".sl"
     if manage_history and not resume:
         stateless = ""
@@ -114,7 +123,8 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
         if teacher is None:
             system_prompt_T = load_prompt(Path(ROOT_DIR) / "src/prompts/system.teacher.md", subject=subject,
                                           language=language)
-            teacher = GeminiAgent("T", "gemini-3.1-flash-lite-preview", system_prompt_T, manage_history, None,
+            teacher_config = config.get_agent_config('teacher')
+            teacher = GeminiAgent("T", teacher_config.get_model(), system_prompt_T, manage_history, None,
                                   api_key=api_keys['google'])
         return teacher
 
@@ -123,7 +133,8 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
         if reviewer is None:
             system_prompt_R = load_prompt(Path(ROOT_DIR) / "src/prompts/system.reviewer.md", subject=subject,
                                           language=language)
-            reviewer = OpenAIAgent("R", "gpt-4o-mini", system_prompt_R, None)
+            reviewer_config = config.get_agent_config('reviewer')
+            reviewer = OpenAIAgent("R", reviewer_config.get_model(), system_prompt_R, None)
         return reviewer
 
     def get_editor():
@@ -131,8 +142,8 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
         if editor is None:
             system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/system.editor.md", subject=subject,
                                           language=language)
-            # editor = GeminiAgent("E", "gemini-3.1-flash-lite-preview", system_prompt_E, False)
-            editor = OpenAIAgent("E", "gpt-4o-mini", system_prompt_E, None)
+            editor_config = config.get_agent_config('editor')
+            editor = OpenAIAgent("E", editor_config.get_model(), system_prompt_E, None)
         return editor
 
     # Check what stage we're at
@@ -265,8 +276,11 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
 
 def clear_cache():
     """Utility function to clear the PDF cache"""
+    from config.config_loader import get_config
     api_keys = load_api_keys()
-    temp_agent = GeminiAgent("temp", "gemini-3.1-flash-lite-preview", "", False, None)
+    config = get_config()
+    teacher_config = config.get_agent_config('teacher')
+    temp_agent = GeminiAgent("temp", teacher_config.get_model(), "", False, None, api_key=api_keys['google'])
     temp_agent.clear_cache()
     print("Cache cleared successfully!")
 
