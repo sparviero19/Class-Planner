@@ -69,7 +69,7 @@ def generate_self_eval_quizzes(subject, language, lesson_num, module_num, resume
     if agent_type == "ollama" and model_name is None: # use only for debug! it produces wrong or gibberish quizzes
         model_name = "ministral-3:latest"
     elif agent_type == "gemini" and model_name is None:
-        model_name = "gemini-2.5-flash-lite"
+        model_name = "gemini-3.1-flash-lite-preview"
 
     api_keys = load_api_keys()
     console = Console()
@@ -246,7 +246,7 @@ def generate_exam_quizzes(subject, language, lesson_num, module_num, resume=True
     if agent_type == "ollama" and model_name is None: # use only for debug! it produces wrong or gibberish quizzes
         model_name = "ministral-3:latest"
     elif agent_type == "gemini" and model_name is None:
-        model_name = "gemini-2.5-flash-lite"
+        model_name = "gemini-3.1-flash-lite-preview"
 
     api_keys = load_api_keys()
     console = Console()

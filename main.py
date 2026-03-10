@@ -40,7 +40,7 @@ def main():
     if quiz_agent_type == "ollama":
         quiz_model_name = "ministral-3:latest" # e.g. "ministral-3:latest" for ollama or "gemini-2.0-flash"
     else:
-        quiz_model_name = "gemini-2.5-flash-lite"
+        quiz_model_name = "gemini-3.1-flash-lite-preview"
 
     # Resume settings
     resume_handout = True          # Resume from last checkpoint (handout)

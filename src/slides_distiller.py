@@ -162,7 +162,7 @@ def generate_slides(subject, language, lesson_num, module_num, resume=True, over
         if teacher is None:
             system_prompt_T = load_prompt(Path(ROOT_DIR) / "src/prompts/system.teacher.md",
                                           subject=subject, language=language)
-            teacher = GeminiAgent("T", "gemini-2.5-flash", system_prompt_T, manage_history, None,
+            teacher = GeminiAgent("T", "gemini-3.1-flash-lite-preview", system_prompt_T, manage_history, None,
                                       api_key=api_keys['google'])
         return teacher
 

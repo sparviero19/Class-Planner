@@ -114,7 +114,7 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
         if teacher is None:
             system_prompt_T = load_prompt(Path(ROOT_DIR) / "src/prompts/system.teacher.md", subject=subject,
                                           language=language)
-            teacher = GeminiAgent("T", "gemini-2.5-flash", system_prompt_T, manage_history, None,
+            teacher = GeminiAgent("T", "gemini-3.1-flash-lite-preview", system_prompt_T, manage_history, None,
                                   api_key=api_keys['google'])
         return teacher
 
@@ -131,7 +131,7 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
         if editor is None:
             system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/system.editor.md", subject=subject,
                                           language=language)
-            # editor = GeminiAgent("E", "gemini-2.5-flash", system_prompt_E, False)
+            # editor = GeminiAgent("E", "gemini-3.1-flash-lite-preview", system_prompt_E, False)
             editor = OpenAIAgent("E", "gpt-4o-mini", system_prompt_E, None)
         return editor
 
@@ -266,7 +266,7 @@ def generate_handout(subject, language, lesson_num, module_num, resume=True, ove
 def clear_cache():
     """Utility function to clear the PDF cache"""
     api_keys = load_api_keys()
-    temp_agent = GeminiAgent("temp", "gemini-2.5-flash", "", False, None)
+    temp_agent = GeminiAgent("temp", "gemini-3.1-flash-lite-preview", "", False, None)
     temp_agent.clear_cache()
     print("Cache cleared successfully!")
 
