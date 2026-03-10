@@ -247,7 +247,7 @@ class SelfEvalQuizPipelineManager(AbstractPipelineManager):
         self.module_num = module_num
 
         # State file for this specific lesson
-        self.state_file = self.intermediate_dir / f"quiz_lesson_{module_num:03}_{lesson_num:03}_state.json"
+        self.state_file = self.intermediate_dir / f"quizzes_lesson_{module_num:03}_{lesson_num:03}_state.json"
         self.state = self._load_state()
 
     def _load_state(self) -> dict[str, Any]:
@@ -283,3 +283,60 @@ class SelfEvalQuizPipelineManager(AbstractPipelineManager):
             "stage_files": {}
         }
         self._save_state()
+
+class ExamQuizPipelineManager(AbstractPipelineManager):
+    """Manages pipeline state and intermediate file checkpoints for EXAM QUIZZES"""
+
+    STAGES = [
+        "generating_exam_quiz",
+        "reformat_csv",
+        "evaluating_exam_quiz",
+        "final_exam_quiz",
+    ]
+
+    def __init__(self, lesson_num: int, module_num: int, output_dir: Path):
+        # Create exams subdirectory
+        exams_dir = output_dir / "exams"
+        super().__init__(exams_dir)
+
+        self.lesson_num = lesson_num
+        self.module_num = module_num
+
+        # State file for this specific lesson in exams/intermediate/
+        self.state_file = self.intermediate_dir / f"exam_lesson_{module_num:03}_{lesson_num:03}_state.json"
+        self.state = self._load_state()
+
+    def _load_state(self) -> dict[str, Any]:
+        """Load pipeline state from disk"""
+        if self.state_file.exists():
+            with open(self.state_file, 'r') as f:
+                return json.load(f)
+        return {
+            "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+
+    def get_stage_file(self, stage: str) -> Path:
+        """Get the standard filename for a stage"""
+        return self.intermediate_dir / f"{stage}_m{self.module_num:03}_l{self.lesson_num:03}.md"
+
+    def get_final_output_path(self, timestamp: int) -> Path:
+        """Get path for final exam quiz output"""
+        return self.output_dir / f"exam_m{self.module_num:03}_l{self.lesson_num:03}_{timestamp}.csv"
+
+    def clear_all(self):
+        """Clear all pipeline state"""
+        self.state = {
+            "lesson_num": self.lesson_num,
+            "module_num": self.module_num,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
+            "completed_stages": [],
+            "stage_files": {}
+        }
+        self._save_state()
+

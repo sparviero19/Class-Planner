@@ -9,6 +9,7 @@ The quizzes are created according to the official guide:
 And are formatted accroding to this specification:
 [Formatting Instructions]
 {format}
+however, to avoid formatting errors, you should change the separator from "," to ";".
 
 [Your Role]
 You have to thoroughly evaluate each question according to

@@ -11,7 +11,7 @@ from rich.markdown import Markdown
 
 from config.definitions import ROOT_DIR, load_api_keys
 from src.agents import GeminiAgent, OpenAIAgent, OllamaAgent
-from src.pipeline_manager import SelfEvalQuizPipelineManager
+from src.pipeline_manager import SelfEvalQuizPipelineManager, ExamQuizPipelineManager
 
 
 def load_prompt(prompt_path, **kwargs):
@@ -21,17 +21,29 @@ def load_prompt(prompt_path, **kwargs):
     return prompt.format(**kwargs)
 
 
-def find_latest_handout(lesson_num: int, module_num: int, output_folder: Path) -> Optional[Path]:
-    """Find the latest generated handout for a given lesson"""
-    handouts_dir = output_folder / "handouts"
-    if not handouts_dir.exists():
+def find_latest_X(X: str, lesson_num: int, module_num: int, output_folder: Path) -> Optional[Path]:
+    """
+    Find the latest generated X for a given lesson
+    where X could be
+        handout
+        quizes
+    """
+    if X == "handouts":
+        prefix = "handout"
+        suffix = "md"
+    else:
+        prefix = X
+        suffix = "csv"
+    X_dir = output_folder / f"{X}"
+
+    if not X_dir.exists():
         return None
 
-    pattern = re.compile(rf"handout_m{module_num:03}_l{lesson_num:03}_(\d+)\.md")
+    pattern = re.compile(rf"{prefix}_m{module_num:03}_l{lesson_num:03}_(\d+)\.{suffix}")
     latest_file = None
     latest_ts = -1
 
-    for file in handouts_dir.glob("*.md"):
+    for file in X_dir.glob(f"*.{suffix}"):
         match = pattern.match(file.name)
         if match:
             ts = int(match.group(1))
@@ -73,13 +85,12 @@ def generate_self_eval_quizzes(subject, language, lesson_num, module_num, resume
         pipeline.clear_all()
 
     # Find the handout
-    handout_path = find_latest_handout(lesson_num, module_num, output_folder)
+    handout_path = find_latest_X("handouts", lesson_num, module_num, output_folder)
     if not handout_path:
         raise FileNotFoundError(
             f"No handout found for lesson {lesson_num}, module {module_num}. "
             f"Expected in: {output_folder}/handouts/"
         )
-
     console.print(f"Using handout: {handout_path.name}")
     with open(handout_path, 'r') as f:
         handout_content = f.read()
@@ -97,7 +108,8 @@ def generate_self_eval_quizzes(subject, language, lesson_num, module_num, resume
         if agent_type == "ollama":
             return OllamaAgent("T", model_name, system_prompt_T)
         else:
-            return GeminiAgent("T", model_name, system_prompt_T, manage_history=False)
+            return GeminiAgent("T", model_name, system_prompt_T, manage_history=False, tools=None,
+                               api_key=api_keys['google'])
 
     def get_evaluator():
         system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/quiz_generator/system.quiz_evaluator.md",
@@ -146,8 +158,11 @@ def generate_self_eval_quizzes(subject, language, lesson_num, module_num, resume
                                               format=quiz_format)
         teacher = get_teacher()
         formatted_quiz = teacher.chat(reformat_quizzes_prompt)
+        pipeline.save_stage_output("reformat_csv", formatted_quiz)
+        console.print("✓ Quiz format updated.")
+
     else:
-        formatted_quiz = pipeline.get_stage_output("formatted_quizzes")
+        formatted_quiz = pipeline.get_stage_output("reformat_csv")
 
     # Stage 3: Evaluate quizzes
     if not pipeline.is_stage_completed("evaluating_quiz_draft"):
@@ -205,7 +220,7 @@ def show_quiz_pipeline_status(lesson_num, module_num, output_folder):
         file_info = f" ({file_path.name})" if file_path.exists() else ""
         console.print(f"{status} {stage}{file_info}")
 
-
+#TODO: super redundant: create a single function for resetting pipelines
 def reset_quiz_pipeline(lesson_num, module_num, from_stage=None, output_dir=None):
     """Reset the quiz pipeline from a specific stage"""
     pipeline = SelfEvalQuizPipelineManager(lesson_num, module_num, output_dir)
@@ -214,3 +229,162 @@ def reset_quiz_pipeline(lesson_num, module_num, from_stage=None, output_dir=None
     else:
         pipeline.clear_all()
 
+def generate_exam_quizzes(subject, language, lesson_num, module_num, resume=True, output_folder=None,
+                          quiz_guide_path=None, quiz_format_path=None, num_questions=5, difficulty_level=5,
+                          agent_type="gemini", model_name=None):
+    """
+    Generate final exam quizzes from a handout and self-eval quizzes (optional) with checkpoint/resume capability.
+    """
+
+    if not output_folder:
+        output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
+    if not quiz_guide_path:
+        quiz_guide_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/guide.txt"
+    if not quiz_format_path:
+        quiz_format_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/quiz_format.txt"
+
+    if agent_type == "ollama" and model_name is None: # use only for debug! it produces wrong or gibberish quizzes
+        model_name = "ministral-3:latest"
+    elif agent_type == "gemini" and model_name is None:
+        model_name = "gemini-2.5-flash-lite"
+
+    api_keys = load_api_keys()
+    console = Console()
+
+    console.print(Markdown("# Final Exam Quiz Generation Pipeline"))
+    console.print(f"Using agent: {agent_type} ({model_name})")
+
+    # Initialize pipeline manager
+    pipeline = ExamQuizPipelineManager(lesson_num, module_num, output_folder)
+
+    if not resume:
+        console.print(Markdown("**Starting fresh pipeline (not resuming)**"))
+        pipeline.clear_all()
+
+    # Find the handout
+    handout_path = find_latest_X("handouts", lesson_num, module_num, output_folder)
+    if not handout_path:
+        raise FileNotFoundError(
+            f"No handout found for lesson {lesson_num}, module {module_num}. "
+            f"Expected in: {output_folder}/handouts/"
+        )
+
+    # Find any self-eval quizzes
+    se_quizzes_path = find_latest_X("quizzes", lesson_num, module_num, output_folder)
+    se_quizzes = ""
+    if not se_quizzes_path:
+        print(
+            f"No self-evaluation quizzes found for lesson {lesson_num}, module {module_num}. "
+            f"Continuing generation of exam quizzes from scratch."
+        )
+    else:
+        with open(se_quizzes_path, 'r') as f:
+            se_quizzes = f.read()
+
+    console.print(f"Using handout: {handout_path.name}")
+    with open(handout_path, 'r') as f:
+        handout_content = f.read()
+
+    with open(quiz_guide_path, 'r') as f:
+        quiz_guide = f.read()
+
+    with open(quiz_format_path, 'r') as f:
+        quiz_format = f.read()
+
+    # Define agents
+    def get_teacher():
+        system_prompt_T = load_prompt(Path(ROOT_DIR) / "src/prompts/system.teacher.md",
+                                      subject=subject, language=language)
+        if agent_type == "ollama":
+            return OllamaAgent("T", model_name, system_prompt_T)
+        else:
+            return GeminiAgent("T", model_name, system_prompt_T, manage_history=False)
+
+    def get_evaluator():
+        system_prompt_E = load_prompt(Path(ROOT_DIR) / "src/prompts/quiz_generator/system.quiz_evaluator.md",
+                                      course_subject=subject, guide=quiz_guide, format=quiz_format)
+        return OpenAIAgent("E", "gpt-4o-mini", system_prompt_E)
+
+    # Pipeline logic
+    next_stage = pipeline.get_next_stage()
+    if next_stage:
+        console.print(Markdown(f"**Resuming from stage: {next_stage}**"))
+    else:
+        console.print(Markdown("**All stages completed!**"))
+        return
+
+    if not pipeline.is_stage_completed("generating_exam_quiz"):
+        teacher = get_teacher()
+        prompt_template_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/exam_draft.teacher.sl.md"
+        prompt = load_prompt(prompt_template_path,
+                             lesson_num=lesson_num,
+                             module_num=module_num,
+                             subject=subject,
+                             language=language,
+                             handout=handout_content,
+                             guide=quiz_guide,
+                             format=quiz_format,
+                             se_quizzes=se_quizzes,
+                             num_questions=num_questions,
+                             difficulty=difficulty_level
+                             )
+        exam_first_draft = teacher.chat(prompt)
+        pipeline.save_stage_output("generating_exam_quiz", exam_first_draft)
+        console.print("✓ First draft of the exam quizzes completed!")
+    else:
+        exam_first_draft = pipeline.get_stage_output("generating_exam_quiz")
+
+    if not pipeline.is_stage_completed("reformat_csv"):
+        console.print(Markdown("## Step 2: Re-format quiz CSV"))
+
+        reformat_quizzes_prompt_template = Path(ROOT_DIR) / "src/prompts/quiz_generator/reformat_quizzes.teacher.sl.md"
+        reformat_quizzes_prompt = load_prompt(reformat_quizzes_prompt_template,
+                                              quiz_draft=exam_first_draft,
+                                              format=quiz_format)
+        teacher = get_teacher()
+        formatted_exam = teacher.chat(reformat_quizzes_prompt)
+        pipeline.save_stage_output("reformat_csv", formatted_exam)
+        console.print("✓ Quiz format updated.")
+    else:
+        formatted_exam = pipeline.get_stage_output("reformat_csv")
+
+    if not pipeline.is_stage_completed("evaluating_exam_quiz"):
+        evaluator = get_evaluator()
+        prompt_template_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/eval_quiz.evaluator.sl.md"
+        prompt = load_prompt(prompt_template_path,
+                             handout=handout_content,
+                             quiz_draft=formatted_exam,
+                             num_questions=num_questions,
+                             difficulty=difficulty_level
+                             )
+        exam_evaluation = evaluator.chat(prompt) #the format and guid are in the system prompt!
+        pipeline.save_stage_output("evaluating_exam_quiz", exam_evaluation)
+        console.print("✓ Exam evaluated")
+    else:
+        exam_evaluation = pipeline.get_stage_output("evaluating_exam_quiz")
+
+    if not pipeline.is_stage_completed("final_exam_quiz"):
+        teacher = get_teacher()
+        prompt_template_path = Path(ROOT_DIR) / "src/prompts/quiz_generator/final_quiz.teacher.sl.md"
+        prompt = load_prompt(prompt_template_path,
+                             lesson_num=lesson_num,
+                             formatted_quiz=formatted_exam,
+                             evaluation=exam_evaluation,
+                             format=quiz_format,
+                             language=language
+                             )
+        final_exam = teacher.chat(prompt)
+
+        # Cleanup CSV if there are markdown blocks
+        if "```csv" in final_exam:
+            final_csv = final_exam.split("```csv")[1].split("```")[0].strip()
+        elif "```" in final_exam:
+            final_csv = final_exam.split("```")[1].split("```")[0].strip()
+        else:
+            final_csv = final_exam.strip()
+
+        timestamp = int(time())
+        final_path = pipeline.get_final_output_path(timestamp)
+        pipeline.save_stage_output("final_exam_quiz", final_csv, final_path)
+
+        console.print(f"✓ Final quiz saved to {final_path}")

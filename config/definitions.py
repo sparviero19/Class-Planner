@@ -27,31 +27,35 @@ def load_api_keys():
     deepseek_api_key = os.getenv('DEEPSEEK_API_KEY')
     groq_api_key = os.getenv('GROQ_API_KEY')
 
+    ret = {k: None for k in ['openai', 'anthropic', 'google', 'deepseek', 'groq']}
     if openai_api_key:
         print(Style.BRIGHT + Fore.GREEN + f"OpenAI API Key exists and begins {openai_api_key[:8]}")
+        ret['openai'] = openai_api_key
     else:
         print(Fore.RED + "OpenAI API Key not set", "red")
 
     if anthropic_api_key:
         print(Style.BRIGHT + Fore.GREEN + f"Anthropic API Key exists and begins {anthropic_api_key[:7]}")
+        ret['anthropic'] = anthropic_api_key
     else:
         print(Fore.RED + "Anthropic API Key not set (and this is optional)")
 
     if google_api_key:
         print(Style.BRIGHT + Fore.GREEN + f"Google API Key exists and begins {google_api_key[:2]}")
+        ret['google'] = google_api_key
     else:
         print(Fore.RED + "Google API Key not set (and this is optional)")
 
     if deepseek_api_key:
         print(Style.BRIGHT + Fore.GREEN + f"DeepSeek API Key exists and begins {deepseek_api_key[:3]}")
+        ret['deepseek'] = deepseek_api_key
     else:
         print(Fore.RED + "DeepSeek API Key not set (and this is optional)")
 
     if groq_api_key:
         print(Style.BRIGHT + Fore.GREEN + f"Groq API Key exists and begins {groq_api_key[:4]}")
+        ret['groq'] = groq_api_key
     else:
         print(Fore.RED + "Groq API Key not set (and this is optional)")
 
-    print()
-
-    return {}
+    return ret

@@ -22,14 +22,18 @@ def main():
     # ============================================================
 
     subject = "Computer Vision"
+    subfolder_name = "ComputerVision"
     language = "Italian"
-    module_num = 2
-    lesson_num = 9
+    module_num = 1
+    lesson_num = 7
+
+    input_folder = Path(ROOT_DIR) / f"data/input/{subfolder_name}/module {module_num:03}/Lez {lesson_num:03} materials"
+    output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
 
     # Pipeline selection
     run_handout_pipeline = False    # Set to True to run handout generation
-    run_slides_pipeline = False     # Set to True to run slides generation
-    run_quiz_pipeline = True       # Set to True to run quiz generation
+    run_slides_pipeline = True     # Set to True to run slides generation
+    run_quiz_pipeline = False       # Set to True to run quiz generation
 
     # Agent settings
     quiz_agent_type = "gemini"    # "gemini" or "ollama"
@@ -70,20 +74,13 @@ def main():
     num_questions = 10
 
     # ============================================================
-    # PATHS
-    # ============================================================
-
-    input_folder = Path(ROOT_DIR) / f"data/input/module {module_num:03}/Lez {lesson_num:03} materials"
-    output_folder = Path(ROOT_DIR) / f"data/output/module {module_num:03}"
-
-    # ============================================================
     # SHOW PIPELINE STATUS (Optional)
     # ============================================================
 
     # Uncomment to see current pipeline status before running
     # show_pipeline_status(lesson_num, module_num, output_folder)
     # show_slides_pipeline_status(lesson_num, module_num, output_folder)
-    # show_quiz_pipeline_status(lesson_num, module_num, output_folder)
+    show_quiz_pipeline_status(lesson_num, module_num, output_folder)
 
     # ============================================================
     # RESET PIPELINES (Optional)

@@ -7,7 +7,7 @@ The handout for the lesson is the following:
 
 ---
 
-Here are several batches of quizzes generated for the lesson.
+Here are several quizzes generated for the lesson.
 
 ---
 
@@ -16,6 +16,5 @@ Here are several batches of quizzes generated for the lesson.
 ---
 
 [Task]
-Please evaluate them according to the instructions and identify 
-the best one
+Please evaluate them according to the instructions and identfy what to correct. 
 

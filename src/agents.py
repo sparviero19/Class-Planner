@@ -37,9 +37,13 @@ class GeminiAgent(Agent):
     #     "gemini-2.5-pro",
     # ])
 
-    def __init__(self, name, model, instructions, manage_history=False, tools=None):
+    def __init__(self, name, model, instructions, manage_history=False, tools=None, api_key=None):
         Agent.__init__(self, name, model, instructions, tools)
-        self.agent_api = googleai.Client()
+        self.api_key = api_key
+        if api_key is None:
+            self.agent_api = googleai.Client()
+        else:
+            self.agent_api = googleai.Client(api_key=api_key)
         self.history = manage_history
         self.current_chat = None
         self.uploaded_pdfs = []

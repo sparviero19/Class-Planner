@@ -11,6 +11,7 @@ The required format is the following:
 
 [Format]
 {format}
+however, to avoid formatting errors, you should change the separator from "," to ";".
 
 [Task]
 Compose the final batch of quiz in {language} language, following the given format. 
