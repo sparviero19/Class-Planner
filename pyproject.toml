@@ -17,6 +17,7 @@ dependencies = [
     "ollama>=0.6.1",
     "openai>=1.109.1",
     "pydantic>=2.11.9",
+    "pymupdf>=1.27.2",
     "scikit-image>=0.26.0",
     "wandb>=0.22.0",
 ]

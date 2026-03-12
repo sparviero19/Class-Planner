@@ -7,7 +7,7 @@ from pathlib import Path
 from config.definitions import ROOT_DIR, google_api_key
 import json
 from datetime import datetime, timedelta
-
+import fitz
 
 class Agent(ABC):
 
@@ -28,6 +28,25 @@ class Agent(ABC):
     def _call_llm(self, prompt):
         raise NotImplementedError()
 
+    def load_pdfs(self, paths: list[Path], use_cache=True):
+        """Extracts text locally for the local Ollama model"""
+        self.uploaded_pdfs_paths = paths
+        self.context_text = ""
+
+        for path in paths:
+            print(f"Locally extracting text from: {path.name}")
+            try:
+                doc = fitz.open(path)
+                text = ""
+                for page in doc:
+                    text += page.get_text()
+
+                self.context_text += f"\n\n--- Document: {path.name} ---\n{text}\n"
+                doc.close()
+            except Exception as e:
+                print(f"Failed to extract text from {path.name}: {e}")
+
+        return self.context_text
 
 class GeminiAgent(Agent):
     # google_models = set([
@@ -204,39 +223,69 @@ class AnthropicAgent(Agent):
     #     "claude-3-opus-latest",
     #     "claude-3-haiku-20240307"])
 
-    def __init__(self, name, model, instructions, tools):
+    def __init__(self, name, model, instructions, tools=None, api_key=None):
         Agent.__init__(self, name, model, instructions, tools)
-        self.agent_api = Anthropic()
+
+        if api_key:
+            self.agent_api = Anthropic(api_key=api_key)
+        else:
+            self.agent_api = Anthropic()
+
+        self.history = []
 
     def chat(self, prompt):
         return self._call_llm(prompt).content[0].text
 
-    def _call_llm(self, prompt, history=None):
+    def _call_llm(self, prompt, history=None, max_tokens=4096):
         if history is None:
             history = self.history
-        messages = [{"role": "system", "content": self.instructions}] + history + [{"role": "user", "content": prompt}]
-        return self.agent_api.messages.create(model=self.model_api, messages=messages, max_tokens=1000)
+
+        full_prompt = prompt
+        if hasattr(self, 'context_text') and self.context_text:
+            full_prompt = f"Here are the reference materials:\n{self.context_text}\n\nTask: {prompt}"
+
+        messages = history + [{"role": "user", "content": full_prompt}]
+
+        self.response = self.agent_api.messages.create(
+            model=self.model,
+            system=self.instructions,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        return self.response
 
 
 class OpenAIAgent(Agent):
 
-    def __init__(self, name, model, instructions, tools=None):
+    def __init__(self, name, model, instructions, tools=None, api_key=None, temperature=0.0):
         Agent.__init__(self, name, model, instructions, tools)
-        self.agent_api = OpenAI()
-        self.history = [{"role": "user", "content": None}]
+        if api_key:
+            self.agent_api = OpenAI(api_key=api_key)
+        else:
+            self.agent_api = OpenAI()
+        self.history = []
+        self.temperature = temperature
 
     def chat(self, prompt):
         return self._call_llm(prompt).choices[0].message.content
 
     def _call_llm(self, prompt, history=None):
+
+        if history is None:
+            history = self.history
+
         messages = [{"role": "system", "content": self.instructions}]
-        if history is not None:
-            messages += history
-        messages += [{"role": "user", "content": prompt}]
+        messages += history
+
+        full_prompt = prompt
+        if hasattr(self, 'context_text') and self.context_text:
+            full_prompt = f"Here are the reference materials:\n{self.context_text}\n\nTask: {prompt}"
+
+        messages += [{"role": "user", "content": full_prompt}]
         self.response = self.agent_api.chat.completions.create(
             model=self.model,
             messages=messages,
-            temperature=0.0,
+            temperature=self.temperature,
         )
         return self.response
 
@@ -247,14 +296,23 @@ class OllamaAgent(Agent):
         Agent.__init__(self, name, model, instructions, tools)
         self.agent_api = OllamaClient()
 
+        self.history = []
+
     def chat(self, prompt):
         return self._call_llm(prompt)['message']['content']
 
     def _call_llm(self, prompt, history=None):
+        if history is None:
+            history = self.history
+
         messages = [{"role": "system", "content": self.instructions}]
-        if history is not None:
-            messages += history
-        messages += [{"role": "user", "content": prompt}]
+        messages += history
+
+        full_prompt = prompt
+        if hasattr(self, 'context_text') and self.context_text:
+            full_prompt = f"Here are the reference materials:\n{self.context_text}\n\nTask: {prompt}"
+
+        messages += [{"role": "user", "content": full_prompt}]
         
         self.response = self.agent_api.chat(
             model=self.model,
