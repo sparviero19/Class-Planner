@@ -7,7 +7,7 @@ and the handout instructions:
 
 {handout_instructions}
 
-You provieded an initial draft for the handout summary of lesson {lesson_num}: 
+You provided an initial draft for the handout summary of lesson {lesson_num}: 
 
 {handout_draft}
 

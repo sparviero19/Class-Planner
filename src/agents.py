@@ -1,3 +1,5 @@
+from typing import Optional
+
 from openai import OpenAI
 from anthropic import Anthropic
 import google.genai as googleai
@@ -30,6 +32,14 @@ class Agent(ABC):
 
     def load_pdfs(self, paths: list[Path], use_cache=True):
         """Extracts text locally for the local Ollama model"""
+
+        if isinstance(paths, str):
+            paths = [Path(paths)]
+        elif isinstance(paths, Path):
+            paths = [paths]
+        elif isinstance(paths, list) and all(isinstance(val, str) for val in paths):
+            paths = [Path(path) for path in paths]
+
         self.uploaded_pdfs_paths = paths
         self.context_text = ""
 
@@ -45,25 +55,19 @@ class Agent(ABC):
                 doc.close()
             except Exception as e:
                 print(f"Failed to extract text from {path.name}: {e}")
-
-        return self.context_text
+        # return paths for compatibility with the load_pdf of the GeminiAgent
+        return paths
 
 class GeminiAgent(Agent):
-    # google_models = set([
-    #     "gemini-2.0-flash",
-    #     "gemini-2.5-flash",
-    #     "gemini-2.5-flash-preview",
-    #     "gemini-2.5-pro",
-    # ])
 
-    def __init__(self, name, model, instructions, manage_history=False, tools=None, api_key=None):
+    def __init__(self, name, model, instructions, tools=None, api_key=None):
         Agent.__init__(self, name, model, instructions, tools)
         self.api_key = api_key
         if api_key is None:
             self.agent_api = googleai.Client()
         else:
             self.agent_api = googleai.Client(api_key=api_key)
-        self.history = manage_history
+        self.history = ""
         self.current_chat = None
         self.uploaded_pdfs = []
         self.uploaded_pdfs_paths = []
@@ -95,25 +99,19 @@ class GeminiAgent(Agent):
         stat = path.stat()
         return f"{path.name}_{stat.st_size}_{stat.st_mtime}"
 
-    def chat(self, prompt, new_chat=False):
-        if self.history:
-            if self.current_chat is None or new_chat:
-                self.current_chat = self.agent_api.chats.create(
-                    model=self.model,
-                    config = googleai.types.GenerateContentConfig(
-                        system_instruction=self.instructions,
-                        temperature=0.0,
-                ))
-            return self._call_llm_chat(prompt).text
-        else:
-            return self._call_llm(prompt).text
+    def chat(self, prompt):
+        return self._call_llm(prompt).text
 
     def _call_llm(self, prompt, history=None):
+        if history is None:
+            history = self.history
+
         messages = []
+        # add cached pdfs through google genai cacheing method
         if len(self.uploaded_pdfs) > 0:
             messages += self.uploaded_pdfs
-        if history is not None:
-            messages.append(history)
+        messages.append(history)
+
         messages.append(prompt)
         self.response = self.agent_api.models.generate_content(
             model=self.model,
@@ -205,24 +203,26 @@ class GeminiAgent(Agent):
 
 
 class AnthropicAgent(Agent):
-    # anthropic_models = set([
-    #     "claude-opus-4-1-20250805",
-    #     "claude-opus-4-1",
-    #     "claude-opus-4-20250514",
-    #     "claude-opus-4-0",
-    #     "claude-sonnet-4-20250514",
-    #     "claude-sonnet-4-0",
-    #     "claude-3-7-sonnet-20250219",
-    #     "claude-3-7-sonnet-latest",
-    #     "claude-3-5-haiku-20241022",
-    #     "claude-3-5-haiku-latest",
-    #     "claude-3-5-sonnet-20241022",
-    #     "claude-3-5-sonnet-latest",
-    #     "claude-3-5-sonnet-20240620",
-    #     "claude-3-opus-20240229",
-    #     "claude-3-opus-latest",
-    #     "claude-3-haiku-20240307"])
 
+    # SyncPage[ModelInfo](data=[
+    #     ModelInfo(id='claude-sonnet-4-6', created_at=datetime.datetime(2026, 2, 17, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Sonnet 4.6', type='model'),
+    #     ModelInfo(id='claude-opus-4-6', created_at=datetime.datetime(2026, 2, 4, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Opus 4.6', type='model'),
+    #     ModelInfo(id='claude-opus-4-5-20251101', created_at=datetime.datetime(2025, 11, 24, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Opus 4.5', type='model'),
+    #     ModelInfo(id='claude-haiku-4-5-20251001', created_at=datetime.datetime(2025, 10, 15, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Haiku 4.5', type='model'),
+    #     ModelInfo(id='claude-sonnet-4-5-20250929', created_at=datetime.datetime(2025, 9, 29, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Sonnet 4.5', type='model'),
+    #     ModelInfo(id='claude-opus-4-1-20250805', created_at=datetime.datetime(2025, 8, 5, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Opus 4.1', type='model'),
+    #     ModelInfo(id='claude-opus-4-20250514', created_at=datetime.datetime(2025, 5, 22, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Opus 4', type='model'),
+    #     ModelInfo(id='claude-sonnet-4-20250514', created_at=datetime.datetime(2025, 5, 22, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Sonnet 4', type='model'),
+    #     ModelInfo(id='claude-3-haiku-20240307', created_at=datetime.datetime(2024, 3, 7, 0, 0, tzinfo=datetime.timezone.utc),
+    #               display_name='Claude Haiku 3', type='model')], has_more=False, first_id='claude-sonnet-4-6', last_id='claude-3-haiku-20240307')
     def __init__(self, name, model, instructions, tools=None, api_key=None):
         Agent.__init__(self, name, model, instructions, tools)
 
@@ -231,12 +231,22 @@ class AnthropicAgent(Agent):
         else:
             self.agent_api = Anthropic()
 
+        self.output_tokens = 10000
+        if "3.5" in model or "3.7" in model:
+            self.output_tokens = 8192
+        elif "3" in model:
+            self.output_tokens = 4096
+
         self.history = []
 
     def chat(self, prompt):
-        return self._call_llm(prompt).content[0].text
+        output = self._call_llm(prompt)
+        return output.content[0].text
 
-    def _call_llm(self, prompt, history=None, max_tokens=4096):
+    def _call_llm(self, prompt, history=None, max_tokens=None):
+        if not max_tokens:
+            max_tokens = self.output_tokens
+
         if history is None:
             history = self.history
 
@@ -264,7 +274,12 @@ class OpenAIAgent(Agent):
         else:
             self.agent_api = OpenAI()
         self.history = []
-        self.temperature = temperature
+
+        if model.startswith("gpt-5") or model.startswith("o3"):
+            self.reasoning_effort = "minimal" #unused at the moment
+            self.temperature = 1.0
+        else:
+            self.temperature = temperature
 
     def chat(self, prompt):
         return self._call_llm(prompt).choices[0].message.content

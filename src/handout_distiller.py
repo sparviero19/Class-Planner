@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from config.definitions import ROOT_DIR, load_api_keys
-from src.agents import OpenAIAgent, GeminiAgent
+from src.agents import OpenAIAgent, GeminiAgent, AnthropicAgent, OllamaAgent
 from src.pipeline_manager import HandoutPipelineManager
 from time import time
 from rich.markdown import Markdown
@@ -56,8 +56,7 @@ def save_output(path, text):
         f.write(text)
 
 
-def generate_handout(config, lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,
-                     manage_history=None):
+def generate_handout(config, lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,):
     """
     Generate handout with checkpoint/resume capability
 
@@ -68,8 +67,6 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
         resume: If True, resume from last checkpoint. If False, start fresh.
         override_files: Dict mapping stage names to file paths for pre-existing files
                        Example: {"summary": "path/to/my_edited_summary.md"}
-        manage_history: If True, use google api automatic chat history. If False, history is handled manually.
-                       If None, uses config setting.
     """
     # Extract from config
     subject = config.course.subject
@@ -81,12 +78,7 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
     if not output_folder:
         output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
 
-    if manage_history is None:
-        manage_history = config.advanced.manage_history
-
     stateless = ".sl"
-    if manage_history and not resume:
-        stateless = ""
     api_keys = load_api_keys()
     console = Console()
 
@@ -124,8 +116,21 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
             system_prompt_T = load_prompt(Path(ROOT_DIR) / "src/prompts/system.teacher.md", subject=subject,
                                           language=language)
             teacher_config = config.get_agent_config('teacher')
-            teacher = GeminiAgent("T", teacher_config.get_model(), system_prompt_T, manage_history, None,
+            agent_type = teacher_config.type
+            agent_model = teacher_config.models[agent_type]
+            if agent_type == "ollama":
+                teacher = OllamaAgent("T", agent_model, system_prompt_T)
+            elif agent_type == "gemini":
+                teacher = GeminiAgent("T", agent_model, system_prompt_T, None,
                                   api_key=api_keys['google'])
+            elif agent_type == "anthropic":
+                teacher = AnthropicAgent("T", agent_model, system_prompt_T, None,
+                                  api_key=api_keys['anthropic'])
+            elif agent_type == "openai":
+                teacher = OpenAIAgent("T", agent_model, system_prompt_T, None,
+                                  api_key=api_keys['openai'])
+            else:
+                raise ValueError(f"The chosen model type ({agent_type}) for the teacher agent is not supported!")
         return teacher
 
     def get_reviewer():
@@ -134,7 +139,20 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
             system_prompt_R = load_prompt(Path(ROOT_DIR) / "src/prompts/system.reviewer.md", subject=subject,
                                           language=language)
             reviewer_config = config.get_agent_config('reviewer')
-            reviewer = OpenAIAgent("R", reviewer_config.get_model(), system_prompt_R, None)
+
+            agent_type = reviewer_config.type
+            agent_model = reviewer_config.models[agent_type]
+            if agent_type == "ollama":
+                reviewer = OllamaAgent("R", agent_model, system_prompt_R)
+            elif agent_type == "gemini":
+                reviewer = GeminiAgent("R", agent_model, system_prompt_R, None, api_key=api_keys['google'])
+            elif agent_type == "anthropic":
+                reviewer = AnthropicAgent("R", agent_model, system_prompt_R, None, api_key=api_keys['anthropic'])
+            elif agent_type == "openai":
+                reviewer = OpenAIAgent("R", agent_model, system_prompt_R, None, api_key=api_keys['openai'])
+            else:
+                raise ValueError(f"The chosen model type ({agent_type}) for the reviewer agent is not supported!")
+
         return reviewer
 
     def get_editor():
@@ -144,6 +162,20 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
                                           language=language)
             editor_config = config.get_agent_config('editor')
             editor = OpenAIAgent("E", editor_config.get_model(), system_prompt_E, None)
+
+            agent_type = editor_config.type
+            agent_model = editor_config.models[agent_type]
+            if agent_type == "ollama":
+                editor = OllamaAgent("E", agent_model, system_prompt_E)
+            elif agent_type == "gemini":
+                editor = GeminiAgent("E", agent_model, system_prompt_E, None, api_key=api_keys['google'])
+            elif agent_type == "anthropic":
+                editor = AnthropicAgent("E", agent_model, system_prompt_E, None, api_key=api_keys['anthropic'])
+            elif agent_type == "openai":
+                editor = OpenAIAgent("E", agent_model, system_prompt_E, None, api_key=api_keys['openai'])
+            else:
+                raise ValueError(f"The chosen model type ({agent_type}) for the editor agent is not supported!")
+
         return editor
 
     # Check what stage we're at
