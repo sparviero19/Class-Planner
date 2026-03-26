@@ -6,7 +6,7 @@ This is the final short summary you provided for the lesson {lesson_num}:
 
 {summary}
 
-The summary is now ok. Now you have to write a handout of minimum 15000 characters in {language} that covers the topics of the summary,
+The summary is now ok. Now you have to write a handout of minimum 20000 characters in {language} that covers the topics of the summary,
 keeping the same structure. In doing so, please follow these instructions:
 * The content of the handout should follow the structure of the summary, **but the content should be more detailed**.
 * Use the content of the materials provided to give depth to the handout sections:

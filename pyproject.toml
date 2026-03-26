@@ -9,7 +9,7 @@ dependencies = [
     "colorama>=0.4.6",
     "dotenv>=0.9.9",
     "google>=3.0.0",
-    "google-genai>=1.39.0",
+    "google-genai==1.68.0",
     "gradio>=5.47.0",
     "markdown>=3.9",
     "matplotlib>=3.10.8",

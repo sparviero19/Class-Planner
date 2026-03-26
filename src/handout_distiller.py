@@ -56,7 +56,8 @@ def save_output(path, text):
         f.write(text)
 
 
-def generate_handout(config, lesson_num, module_num, resume=True, override_files=None, input_folder=None, output_folder=None,):
+def generate_handout(config, lesson_num, module_num, resume=True, override_files=None, input_folder=None,
+                     output_folder=None, ):
     """
     Generate handout with checkpoint/resume capability
 
@@ -74,7 +75,8 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
     subfolder_name = config.course.subfolder_name
 
     if not input_folder:
-        input_folder = Path(ROOT_DIR) / f"data/input/{subfolder_name}/module {module_num:03}/Lez {lesson_num:03} materials"
+        input_folder = Path(
+            ROOT_DIR) / f"data/input/{subfolder_name}/module {module_num:03}/Lez {lesson_num:03} materials"
     if not output_folder:
         output_folder = Path(ROOT_DIR) / f"data/output/{subfolder_name}/module {module_num:03}"
 
@@ -121,14 +123,14 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
             if agent_type == "ollama":
                 teacher = OllamaAgent("T", agent_model, system_prompt_T)
             elif agent_type == "gemini":
-                teacher = GeminiAgent("T", agent_model, system_prompt_T, None,
-                                  api_key=api_keys['google'])
+                teacher = GeminiAgent("T", agent_model['name'], thinking_effort=agent_model['thinking'],
+                                      instructions=system_prompt_T, tools=None, api_key=api_keys['google'])
             elif agent_type == "anthropic":
                 teacher = AnthropicAgent("T", agent_model, system_prompt_T, None,
-                                  api_key=api_keys['anthropic'])
+                                         api_key=api_keys['anthropic'])
             elif agent_type == "openai":
-                teacher = OpenAIAgent("T", agent_model, system_prompt_T, None,
-                                  api_key=api_keys['openai'])
+                teacher = OpenAIAgent("T", agent_model['name'], reasoning_effort=gent_model['thinking'],
+                                      instructions=system_prompt_T, tools=None, api_key=api_keys['openai'])
             else:
                 raise ValueError(f"The chosen model type ({agent_type}) for the teacher agent is not supported!")
         return teacher
@@ -197,8 +199,8 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
     materials_info = {p.name: p.name for p in material_paths}
 
     # First step: draft the summary from the input materials
-    if not pipeline.is_stage_completed("first_draft"):
-        console.print(Markdown("## Step 1: Generating first draft"))
+    if not pipeline.is_stage_completed("summary"):
+        console.print(Markdown("## Step 1: Generating summary"))
         summary_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/summary.teacher{stateless}.md", topics=topics,
                                            subject=subject, language=language, materials=materials,
                                            lesson_num=lesson_num)
@@ -206,30 +208,18 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
             summary_instructions += f"\n\n##Here I give you the topics for all the lessons in the module: \n{module_structure}"
 
         first_draft = get_teacher().chat(summary_instructions)
-        saved_path = pipeline.save_stage_output("first_draft", first_draft)
-        console.print(f"✓ First draft saved to: {saved_path}")
+        saved_path = pipeline.save_stage_output("summary", first_draft)
+        console.print(f"✓ Summary saved to: {saved_path}")
     else:
-        console.print(Markdown("## Step 1: ✓ First draft already exists (skipping)"))
+        console.print(Markdown("## Step 1: ✓ Summary already exists (skipping)"))
         summary_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/summary.teacher{stateless}.md", topics=topics,
                                            subject=subject, language=language, materials=materials,
                                            lesson_num=lesson_num)
-        first_draft = pipeline.get_stage_output("first_draft")
+        first_draft = pipeline.get_stage_output("summary")
 
     # Second step: review the summary with a different model
     if not pipeline.is_stage_completed("review"):
-        console.print(Markdown("## Step 2: Reviewing first draft"))
-        # Reload materials info for instructions
-        # material_paths, topics_file = load_materials_paths(input_folder)
-        # module_structure = {}
-        # if os.path.exists(m_folder / "module_topics.md"):
-        #     module_structure = extract_module_structure(m_folder / "module_topics.md")
-        # topics = extract_topics(topics_file)
-
-        # # Recreate instructions (needed for review context)
-
-        # summarY_instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/summary.teacher.md", topics=topics, subject=subject, language=language, materials=materials_info, lesson_num=lesson_num)
-        # if module_structure:
-        #     summarY_instructions += f"\n\n##Here I give you the topics for all the lessons in the module: \n{module_structure}"
+        console.print(Markdown("## Step 2: Reviewing summary"))
 
         review_instructions = load_prompt(Path(ROOT_DIR) / "src/prompts/review.reviewer.md",
                                           summary_instructions=summary_instructions, summary_draft=first_draft,
@@ -243,17 +233,16 @@ def generate_handout(config, lesson_num, module_num, resume=True, override_files
         review = pipeline.get_stage_output("review")
 
     # Third step: create the revised summary
-    if not pipeline.is_stage_completed("summary"):
-        console.print(Markdown("## Step 3: Updating draft based on review"))
+    if not pipeline.is_stage_completed("revised_summary"):
+        console.print(Markdown("## Step 3: Updating summary based on review"))
         update_instructions = load_prompt(Path(ROOT_DIR) / f"src/prompts/review_summary.teacher{stateless}.md",
                                           instructions=summary_instructions, summary=first_draft, review=review)
         revised_summary = get_teacher().chat(update_instructions)
-        saved_path = pipeline.save_stage_output("summary", revised_summary)
-        console.print(f"✓ Summary saved to: {saved_path}")
+        saved_path = pipeline.save_stage_output("revised_summary", revised_summary)
+        console.print(f"✓ Revised summary saved to: {saved_path}")
     else:
         console.print(Markdown("## Step 3: ✓ Summary already exists (skipping)"))
-        revised_summary = pipeline.get_stage_output(
-            "summary")  # it is unused since the teacher agent has internal history management
+        revised_summary = pipeline.get_stage_output("revised_summary")  # it is unused since the teacher agent has internal history management
 
     # Fourth step: Write notes
     if not pipeline.is_stage_completed("handout_draft"):

@@ -107,9 +107,9 @@ class HandoutPipelineManager (AbstractPipelineManager):
     """Manages pipeline state and intermediate file checkpoints for HANDOUTS"""
 
     STAGES = [
-        "first_draft",
-        "review",
         "summary",
+        "review",
+        "revised_summary",
         "handout_draft",
         "editing_instructions",
         "final_handout"

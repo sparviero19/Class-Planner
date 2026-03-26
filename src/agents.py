@@ -3,6 +3,7 @@ from typing import Optional
 from openai import OpenAI
 from anthropic import Anthropic
 import google.genai as googleai
+from google.genai import types
 from ollama import Client as OllamaClient
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -60,13 +61,22 @@ class Agent(ABC):
 
 class GeminiAgent(Agent):
 
-    def __init__(self, name, model, instructions, tools=None, api_key=None):
+    effort2budget = {"high": 24576, "medium": 10000, "low": 3000, "minimal": 128}
+    def __init__(self, name, model, instructions, thinking_effort=None, tools=None, api_key=None):
         Agent.__init__(self, name, model, instructions, tools)
         self.api_key = api_key
         if api_key is None:
             self.agent_api = googleai.Client()
         else:
             self.agent_api = googleai.Client(api_key=api_key)
+
+        if thinking_effort:
+            if "2.5" in self.model:
+                self.thinking_effort = self.effort2budget[thinking_effort]
+            else:
+                self.thinking_effort = thinking_effort
+        else:
+            self.thinking_effort = "minimal" if "3" in self.model else 128
         self.history = ""
         self.current_chat = None
         self.uploaded_pdfs = []
@@ -113,12 +123,15 @@ class GeminiAgent(Agent):
         messages.append(history)
 
         messages.append(prompt)
+        thinking_level = lambda x: {"thinking_level":self.thinking_effort} if "3" in x else {"thinking_budget": self.thinking_effort}
+        mythinking = thinking_level(self.model)
         self.response = self.agent_api.models.generate_content(
             model=self.model,
             contents=messages,
             config=googleai.types.GenerateContentConfig(
                 system_instruction=self.instructions,
-                temperature=0.0
+                temperature=0.0,
+                thinking_config=types.ThinkingConfig(**mythinking)
             ))
         return self.response
 
@@ -267,7 +280,7 @@ class AnthropicAgent(Agent):
 
 class OpenAIAgent(Agent):
 
-    def __init__(self, name, model, instructions, tools=None, api_key=None, temperature=0.0):
+    def __init__(self, name, model, instructions, reasoning_effort="none", tools=None, api_key=None, temperature=0.0):
         Agent.__init__(self, name, model, instructions, tools)
         if api_key:
             self.agent_api = OpenAI(api_key=api_key)
@@ -275,10 +288,17 @@ class OpenAIAgent(Agent):
             self.agent_api = OpenAI()
         self.history = []
 
-        if model.startswith("gpt-5") or model.startswith("o3"):
-            self.reasoning_effort = "minimal" #unused at the moment
-            self.temperature = 1.0
+        # Determine if this is a reasoning model (o1, o3, etc.)
+        self.is_reasoning_model = any(m in model for m in ["o1", "o3", "gpt-5"])
+
+        if self.is_reasoning_model:
+            if not reasoning_effort:
+                self.reasoning_effort = "minimal"
+            else:
+                self.reasoning_effort = reasoning_effort
+            self.temperature = 1.0  # Must be 1.0 for reasoning models
         else:
+            self.reasoning_effort = None
             self.temperature = temperature
 
     def chat(self, prompt):
@@ -297,11 +317,19 @@ class OpenAIAgent(Agent):
             full_prompt = f"Here are the reference materials:\n{self.context_text}\n\nTask: {prompt}"
 
         messages += [{"role": "user", "content": full_prompt}]
-        self.response = self.agent_api.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=self.temperature,
-        )
+
+        kwargs = {
+            "model": self.model,
+            "messages": messages,
+        }
+        if self.is_reasoning_model:
+            # Reasoning models use 'reasoning_effort' and usually ignore/error on 'temperature'
+            kwargs["reasoning_effort"] = self.reasoning_effort
+        else:
+            # Standard models use temperature
+            kwargs["temperature"] = self.temperature
+
+        self.response = self.agent_api.chat.completions.create(**kwargs)
         return self.response
 
 
